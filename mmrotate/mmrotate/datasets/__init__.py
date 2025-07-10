@@ -8,8 +8,8 @@ from .amod import *  # noqa: F401, F403
 from .dota_reconstructed import DOTADatasetReconstructed
 from .dior import DIORDataset
 from .dior_reconstructed import DIORDatasetReconstructed  # noqa: F
-
+from .hituav import HITUAVDataset  # noqa: F401, F403
 __all__ = ['SARDataset', 'DOTADataset', 'build_dataset', 'HRSCDataset',
            'AMODDataset', 'DOTADatasetReconstructed',
-           'DIORDataset', 'DIORDatasetReconstructed'] #, 'AMODFineGrainedDataset',
+           'DIORDataset', 'DIORDatasetReconstructed','HITUAVDataset'] #, 'AMODFineGrainedDataset',
            # 'AMODwithCivilianDataset', 'AMODwithCivilianFineGrainedDataset']
