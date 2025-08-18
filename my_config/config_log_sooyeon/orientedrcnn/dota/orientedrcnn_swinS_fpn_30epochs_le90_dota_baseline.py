@@ -1,10 +1,7 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
-dataset_type = 'AMODDataset'
-angles = [0, 10, 20]
-data_root = 'data/AMOD_V1/'         # Important: should be ended with '/'
-modality = 'EO'                     # 'eo' or 'ir'
-img_extension = 'png'               # 'png' or 'jpg'
-num_classes = 20                    # AMOD -> 13, AMOD_FG -> 25 (if civilian allowed? +1!)
+dataset_type = 'DOTADataset'
+data_root = '/media/kimsooyeon/D/dataset/DOTA_v1_for_mmrotate/'         # Important: should be ended with '/'
+num_classes = 20
 load_from = None
 resume_from = None
 img_norm_cfg = dict(mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -19,8 +16,8 @@ lr_config = dict(
     warmup_ratio=0.3333333333333333,
     step=[16, 22]
 )
-runner = dict(type='EpochBasedRunner', max_epochs=30)
-checkpoint_config = dict(interval=-1) # save only when val mAP is best
+runner = dict(type='EpochBasedRunner', max_epochs=5)
+checkpoint_config = dict(interval=1) # save only when val mAP is best
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook'),
                                       dict(type='TensorboardLoggerHook')])
 dist_params = dict(backend='nccl')
@@ -35,11 +32,7 @@ mp_start_method = 'fork'
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='RResize',
-        img_scale=[(1536, 1152), (2340, 1728)], # 0.8x - 1.2x  (1x: 1920x1440)
-        multiscale_mode='range'),
-    dict(type='RRandomCrop', crop_size=(1024, 1024), allow_negative_crop=False,
-         crop_type='absolute', version=angle_version),
+    dict(type='RResize', img_scale=(1024, 1024)),
     dict(type='RRandomFlip',
          flip_ratio=[0.25, 0.25, 0.25],
          direction=['horizontal', 'vertical', 'diagonal'],
@@ -54,7 +47,7 @@ test_pipeline = [
     # dict(type='LoadAnnotations', with_bbox=True), # Not allowed for val/test!
     dict(
         type='MultiScaleFlipAug',
-        img_scale=[(1920, 1440)],
+        img_scale=(1024, 1024),
         transforms=[
             dict(type='RResize'),
             dict(type='Normalize', **img_norm_cfg),
@@ -67,12 +60,21 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
-    train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train', angles=angles,
-               pipeline=train_pipeline, version=angle_version, modality=modality, ext=img_extension),
-    val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train', angles=angles,
-             pipeline=test_pipeline, version=angle_version, modality=modality, ext=img_extension),
-    test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test', angles=angles,
-              pipeline=test_pipeline, version=angle_version, modality=modality, ext=img_extension)
+    train=dict(
+        type=dataset_type,
+        ann_file=data_root + 'train/annfiles/',
+        img_prefix=data_root + 'train/images_UNIT/',
+        pipeline=train_pipeline),
+    val=dict(
+        type=dataset_type,
+        ann_file=data_root + 'val/annfiles/',
+        img_prefix=data_root + 'val/images_UNIT/',
+        pipeline=test_pipeline),
+    test=dict(
+        type=dataset_type,
+        ann_file=data_root + 'test/images/',
+        img_prefix=data_root + 'test/images/',
+        pipeline=test_pipeline)
 )
 
 

@@ -1,6 +1,6 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
-dataset_type = 'DIORDataset'
-data_root = '/media/kimsooyeon/D/dataset/DIOR/'         # Important: should be ended with '/'
+dataset_type = 'HITUAVDataset'
+data_root = '/media/kimsooyeon/D/dataset/HIT-UAV/'         # Important: should be ended with '/'
 num_classes = 20
 load_from = None
 resume_from = None
@@ -16,8 +16,8 @@ lr_config = dict(
     warmup_ratio=0.3333333333333333,
     step=[16, 22]
 )
-runner = dict(type='EpochBasedRunner', max_epochs=5)
-checkpoint_config = dict(interval=1) # save only when val mAP is best
+runner = dict(type='EpochBasedRunner', max_epochs=30)
+checkpoint_config = dict(interval=-1) # save only when val mAP is best
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook'),
                                       dict(type='TensorboardLoggerHook')])
 dist_params = dict(backend='nccl')
@@ -57,36 +57,25 @@ test_pipeline = [
             # dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])  # Not allowed for val/test!
         ])
 ]
-
 data = dict(
+    samples_per_gpu=2,
+    workers_per_gpu=2,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'ImageSets/Main/train.txt',
-        img_prefix=data_root + 'JPEGImages-trainval_UNIT/',
-        annot_prefix=data_root + 'Annotations/Oriented Bounding Boxes',
-        xmltype='obb',
-        version='oc',
+        ann_file=data_root + 'train/ann/',
+        img_prefix=data_root + 'train/img/',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=data_root + 'ImageSets/Main/val.txt',
-        img_prefix=data_root + 'JPEGImages-trainval_UNIT/',
-        annot_prefix=data_root + 'Annotations/Oriented Bounding Boxes/',
-        xmltype='obb',
-        version='oc',
-        pipeline=test_pipeline
-    ),
+        ann_file=data_root + 'val/ann/',
+        img_prefix=data_root + 'val/img/',
+        pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'ImageSets/Main/test.txt',
-        img_prefix=data_root + 'JPEGImages-test/',
-        annot_prefix=data_root + 'Annotations/Oriented Bounding Boxes/',
-        xmltype='obb',
-        version='oc',
-        pipeline=test_pipeline
-    )
+        ann_file=data_root + 'test/ann/',
+        img_prefix=data_root + 'test/img/',
+        pipeline=test_pipeline)
 )
-
 
 
 # 🤖 MODEL CONFIG ######################################################################################################

@@ -1,7 +1,7 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
 dataset_type = 'AMODDataset'
-angles = [0]
-data_root = 'data/AMOD_V1/'         # Important: should be ended with '/'
+angles = [0, 10, 20]
+data_root = '/media/kimsooyeon/D/AMOD2VISIR_cycleGAN/'         # Important: should be ended with '/'
 modality = 'EO'                     # 'eo' or 'ir'
 img_extension = 'png'               # 'png' or 'jpg'
 num_classes = 20                    # AMOD -> 13, AMOD_FG -> 25 (if civilian allowed? +1!)
@@ -19,8 +19,8 @@ lr_config = dict(
     warmup_ratio=0.3333333333333333,
     step=[16, 22]
 )
-runner = dict(type='EpochBasedRunner', max_epochs=30)
-checkpoint_config = dict(interval=-1) # save only when val mAP is best
+runner = dict(type='EpochBasedRunner', max_epochs=5)
+checkpoint_config = dict(interval=1) # save only when val mAP is best
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook'),
                                       dict(type='TensorboardLoggerHook')])
 dist_params = dict(backend='nccl')
@@ -34,6 +34,7 @@ mp_start_method = 'fork'
 # TIP: https://github.com/open-mmlab/mmdetection/issues/7680
 train_pipeline = [
     dict(type='LoadImageFromFile'),
+    dict(type='ToGray', keep_3ch=True),  # 👈 추가
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='RResize',
         img_scale=[(1536, 1152), (2340, 1728)], # 0.8x - 1.2x  (1x: 1920x1440)
