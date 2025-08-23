@@ -37,8 +37,72 @@
 ### Announcements:
 * Feb 4 2025: You can run mock tests using the small-scale, tailored data we provide. See `data/AMOD_MOCK`!
 
+### Preliminaries [For 🐳 Docker users]:
+* <details>
+    <summary> Install Docker? (Ubuntu) </summary>
+        
+    * (Optional) It’s best to remove any previously installed versions of Docker before starting.
+        ~~~shell
+        sudo apt-get remove docker docker-engine docker.io containerd runc
+        ~~~
+                
+    * **(Step 0-A)** Add Docker’s official GPG key and set up the repository.
+        ~~~shell
+        sudo apt-get update
+        sudo apt-get install -y ca-certificates curl
+        sudo install -m 0755 -d /etc/apt/keyrings
+        sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        sudo chmod a+r /etc/apt/keyrings/docker.asc
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+          $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        ~~~
+        
+    * **(Step 0-B)** Install Docker Engine.
+        ~~~shell
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        ~~~
 
-### Preliminaries:
+    * **(Step 0-B-Optional)** Verify Installation: If you see the message **Hello from Docker!**, Docker has been installed successfully.
+        ~~~shell
+        sudo docker run hello-world
+        ~~~
+
+    * **(Step 0-C)** Set up the NVIDIA Container Toolkit repository and install the NVIDIA Container Toolkit.
+       ~~~shell
+       curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+          && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+            sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+            sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+       sudo apt-get update
+       sudo apt-get install -y nvidia-container-toolkit
+       sudo systemctl restart docker
+       ~~~
+
+    * **(Step 0-C-Optional)** Verify Installation: If you see the message from **NVIDIA-SMI**, everything is fine!
+       ~~~shell
+       sudo docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+       ~~~
+
+    * (Optional) Use Docker without sudo ❗️Note: Be sure to restart your terminal session or reboot your system after executing the command so that the changes are applied.
+        ~~~shell
+        sudo usermod -aG docker $USER
+        ~~~
+    
+    </details>
+
+* **Step 1**. Execute the command below in the `AMOD` directory.
+    ~~~shell
+    docker build -t my-amod-app:v1 .
+    ~~~
+* **Step 2**. To test the Docker container, execute the command below.
+    ~~~shell
+    docker run -it --rm --gpus all -v $(pwd):/workspace my-amod-app:v1
+    ~~~
+
+### Preliminaries [For 🐍 Conda users]:
 
 
 * **Step 1**. Create a conda environment with Python 3.8 and activate it.
