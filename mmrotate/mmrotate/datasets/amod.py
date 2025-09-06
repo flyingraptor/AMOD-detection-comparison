@@ -72,6 +72,8 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         self.width, self.height = width, height
         self.ext = ext
         self.label_prefix = label_prefix
+        if label_prefix.lower() in ['none', 'null']:
+            self.label_prefix = None
 
         super(AMODDataset, self).__init__(ann_file, pipeline, **kwargs)
 
@@ -82,11 +84,10 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         for sample_idx in sample_idx_list:
             for angle in self.angles:
                 try:
-                    if (self.label_prefix is not None
-                            or self.label_prefix not in ['None', 'NONE', 'none']):  # For v1.5 label
+                    if self.label_prefix is not None:  # For v1.5 label
                         # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
                         annot_df = pd.read_csv(
-                            f'{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
+                            f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
                         )
                     else:
                         annot_df = pd.read_csv(
