@@ -87,7 +87,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
                 try:
                     if self.label_prefix is not None:  # For v1.5 label
                         # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
-                        if os.path.exists(f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'):
+                        if not os.path.exists(f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'):
                             print('NO exist: ', end='')
                             print(f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv')
                         annot_df = pd.read_csv(
