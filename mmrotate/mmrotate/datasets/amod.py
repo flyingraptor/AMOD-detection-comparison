@@ -82,7 +82,8 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         for sample_idx in sample_idx_list:
             for angle in self.angles:
                 try:
-                    if self.label_prefix is not None:  # For v1.5 label
+                    if (self.label_prefix is not None
+                            or self.label_prefix not in ['None', 'NONE', 'none']):  # For v1.5 label
                         # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
                         annot_df = pd.read_csv(
                             f'{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
