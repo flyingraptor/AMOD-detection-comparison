@@ -64,7 +64,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         if '\\' in kwargs['data_root']:                                     # if spacing is needed
             kwargs['data_root'] = kwargs['data_root'].replace('\\', ' ')
         print(f'▶️ [{self.__class__.__name__}] Initializing with angles: {angles}, '
-              f'ann_file: {ann_file}, kwargs: {kwargs}')
+              f'ann_file: {ann_file}, label_prefix: {label_prefix}, kwargs: {kwargs}')
         self.version = version
         self.cat2label = {cat: i for i, cat in enumerate(self.CLASSES)}
         self.angles = angles
