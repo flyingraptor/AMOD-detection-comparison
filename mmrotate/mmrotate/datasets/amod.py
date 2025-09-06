@@ -40,6 +40,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
                  height: int = 1440,
                  ext: str = 'png',
                  angles: Optional[List[int]] = None,
+                 label_prefix: str = None,
                  **kwargs) -> None:
         """
         Args:
@@ -70,6 +71,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         self.modality = modality.upper()
         self.width, self.height = width, height
         self.ext = ext
+        self.label_prefix = label_prefix
 
         super(AMODDataset, self).__init__(ann_file, pipeline, **kwargs)
 
@@ -80,9 +82,15 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         for sample_idx in sample_idx_list:
             for angle in self.angles:
                 try:
-                    annot_df = pd.read_csv(
-                        f'{self.img_prefix}/{sample_idx}/{angle}/ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv'
-                    ).query('usable == "T"')
+                    if self.label_prefix is not None:  # For v1.5 label
+                        # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
+                        annot_df = pd.read_csv(
+                            f'{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
+                        )
+                    else:
+                        annot_df = pd.read_csv(
+                            f'{self.img_prefix}/{sample_idx}/{angle}/ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv'
+                        ).query('usable == "T"')
 
                     if not len(annot_df):
                         continue
