@@ -72,7 +72,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         self.width, self.height = width, height
         self.ext = ext
         self.label_prefix = label_prefix
-        if label_prefix.lower() in ['none', 'null']:
+        if type(label_prefix) is str and label_prefix.lower() in ['none', 'null']:
             self.label_prefix = None
 
         super(AMODDataset, self).__init__(ann_file, pipeline, **kwargs)
