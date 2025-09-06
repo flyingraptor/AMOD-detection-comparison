@@ -1,6 +1,7 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
 dataset_type = 'AMODDataset'
 angles = [0, 10, 20, 30, 40, 50]
+label_version = 'v1.5'              # 'v1.0' or 'v1.5' (We recommend using v1.5)
 data_root = 'data/AMOD_V1/'         # Important: should be ended with '/'
 modality = 'EO'                     # 'eo' or 'ir'
 img_extension = 'png'               # 'png' or 'jpg'
@@ -64,15 +65,20 @@ test_pipeline = [
             # dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])  # Not allowed for val/test!
         ])
 ]
+train_label_prefix = 'train_label_v1.5' if label_version == 'v1.5' else None
+test_label_prefix = 'test_label_v1.5' if label_version == 'v1.5' else None
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train', angles=angles,
-               pipeline=train_pipeline, version=angle_version, modality=modality, ext=img_extension),
+               pipeline=train_pipeline, version=angle_version, modality=modality,
+               ext=img_extension, label_prefix=train_label_prefix),
     val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train', angles=angles,
-             pipeline=test_pipeline, version=angle_version, modality=modality, ext=img_extension),
+             pipeline=test_pipeline, version=angle_version, modality=modality,
+             ext=img_extension, label_prefix=train_label_prefix),
     test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test', angles=angles,
-              pipeline=test_pipeline, version=angle_version, modality=modality, ext=img_extension)
+              pipeline=test_pipeline, version=angle_version, modality=modality,
+              ext=img_extension, label_prefix=test_label_prefix)
 )
 
 
