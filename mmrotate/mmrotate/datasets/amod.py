@@ -85,11 +85,13 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         for sample_idx in sample_idx_list:
             for angle in self.angles:
                 try:
+                    # IMAGE
+                    img_file_name = f'{sample_idx}/{angle}/{self.modality}_{sample_idx}_{angle}.{self.ext}'
+                    assert os.path.exists(img_file_name), f'{img_file_name} does not exist!'
+
+                    # LABEL
                     if self.label_prefix is not None:  # For v1.5 label
                         # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
-                        if not os.path.exists(f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'):
-                            print('NO exist: ', end='')
-                            print(f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv')
                         annot_df = pd.read_csv(
                             f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
                         )
@@ -117,7 +119,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
                     obb_bboxes = obb_bboxes[valid_labels_inds]
 
                     data_info_list.append({
-                        'filename': f'{sample_idx}/{angle}/{self.modality}_{sample_idx}_{angle}.{self.ext}',
+                        'filename': img_file_name,
                         'width': self.width, 'height': self.height,
                         'ann': {
                             'bboxes': obb_bboxes,
