@@ -562,3 +562,235 @@ class RMosaic(Mosaic):
                      (bbox_h > self.min_bbox_size)
         valid_inds = np.nonzero(valid_inds)[0]
         return bboxes[valid_inds], labels[valid_inds]
+
+@ROTATED_PIPELINES.register_module()
+class ToGray(object):
+    """Convert BGR image to grayscale, optionally replicate to 3 channels."""
+    def __init__(self, keep_3ch=True):
+        self.keep_3ch = keep_3ch
+
+    def __call__(self, results):
+        img = results['img']  # shape: (H, W, 3)
+        gray = mmcv.bgr2gray(img)  # shape: (H, W)
+        if self.keep_3ch:
+            gray = np.stack([gray, gray, gray], axis=-1)  # (H, W, 3)
+        else:
+            gray = gray[:, :, None]
+
+        results['img'] = gray
+        results['img_shape'] = gray.shape
+        results['ori_shape'] = gray.shape
+
+        if 'img_fields' in results:
+            for key in results['img_fields']:
+                if key == 'img':
+                    results[key] = gray
+
+        return results
+
+
+@ROTATED_PIPELINES.register_module()
+class MaskBrightness:
+    """Object-aware brightness augmentation with multiple smoothing modes.
+
+    mode:
+        - 'gaussian'   : GaussianBlur (기본)
+        - 'average'    : Box blur
+        - 'median'     : Median blur (CV_8U 변환 필요)
+        - 'fft'        : FFT 기반 low-pass
+        - 'perlin'     : Perlin-like noise (간단 구현)
+    """
+
+    def __init__(self,
+                 strength=0.25,
+                 blur_sigma=40,
+                 feather_px=5,
+                 per_instance=True,
+                 preserve_mean=True,
+                 prob=0.7,
+                 seed=None,
+                 mode='gaussian'):
+
+        self.strength = float(strength)
+        self.blur_sigma = int(blur_sigma)
+        self.feather_px = int(feather_px)
+        self.per_instance = bool(per_instance)
+        self.preserve_mean = bool(preserve_mean)
+        self.prob = float(prob)
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
+        self.mode = mode
+
+    def _lowfreq_field(self, h, w):
+        """랜덤 노이즈 생성 후 smoothing → [-1,1]"""
+        field = self.rng.normal(0, 1, size=(h, w)).astype(np.float32)
+
+        if self.mode == 'gaussian':
+            field = cv2.GaussianBlur(field, (0, 0), self.blur_sigma)
+
+        elif self.mode == 'average':
+            k = max(3, self.blur_sigma | 1)  # 홀수 커널
+            field = cv2.blur(field, (k, k))
+
+        elif self.mode == 'median':
+            k = max(3, self.blur_sigma | 1)
+            # OpenCV medianBlur는 float32 지원 안함 → uint8로 변환
+            fmin, fmax = float(field.min()), float(field.max())
+            if fmax - fmin < 1e-6:
+                field = np.zeros_like(field, dtype=np.float32)
+            else:
+                u8 = np.clip((field - fmin) / (fmax - fmin) * 255.0, 0, 255).astype(np.uint8)
+                u8 = cv2.medianBlur(u8, k)
+                # 다시 float32로 복원
+                field = u8.astype(np.float32) / 255.0
+
+        elif self.mode == 'fft':
+            # FFT 기반 low-pass filtering
+            f = np.fft.fft2(field)
+            fshift = np.fft.fftshift(f)
+            crow, ccol = h // 2, w // 2
+            mask = np.zeros((h, w), np.uint8)
+            r = self.blur_sigma
+            y, x = np.ogrid[:h, :w]
+            mask_area = (x - ccol) ** 2 + (y - crow) ** 2 <= r * r
+            mask[mask_area] = 1
+            fshift = fshift * mask
+            field = np.fft.ifft2(np.fft.ifftshift(fshift)).real.astype(np.float32)
+
+        elif self.mode == 'perlin':
+            # 간단 Perlin-like: 작은 노이즈 upsample + blur
+            small = self.rng.normal(0, 1, size=(h // 8 + 1, w // 8 + 1)).astype(np.float32)
+            field = cv2.resize(small, (w, h), interpolation=cv2.INTER_CUBIC)
+            field = cv2.GaussianBlur(field, (0, 0), self.blur_sigma)
+
+        else:
+            raise ValueError(f"Unknown mode {self.mode}")
+
+        # [-1, 1] 정규화
+        fmin, fmax = float(field.min()), float(field.max())
+        if fmax - fmin < 1e-6:
+            return np.zeros((h, w), np.float32)
+        return 2.0 * (field - fmin) / (fmax - fmin) - 1.0
+
+    def __call__(self, results):
+        if self.rng.random() > self.prob:
+            return results
+        gt_masks = results.get('gt_masks', None)
+        if gt_masks is None:
+            return results
+
+        img = results['img']
+        if img.ndim == 2:
+            img = np.repeat(img[..., None], 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 1:
+            img = np.repeat(img, 3, axis=2)
+
+        out = img.astype(np.float32).copy()
+        masks = gt_masks.to_ndarray().astype(np.uint8)
+        if masks.ndim == 2:
+            masks = masks[None, ...]
+        if not self.per_instance:
+            masks = masks.max(axis=0, keepdims=True)
+
+        H, W = img.shape[:2]
+
+        for mk in masks:
+            if mk.max() == 0:
+                continue
+
+            field = self._lowfreq_field(H, W)
+
+            if self.preserve_mean and mk.sum() > 0:
+                field = field - field[mk > 0].mean()
+
+            scale = 1.0 + self.strength * field
+            trans = out * scale[..., None]
+
+            if self.feather_px > 0:
+                soft = cv2.GaussianBlur(
+                    mk * 255,
+                    (self.feather_px * 2 + 1, self.feather_px * 2 + 1),
+                    0
+                ).astype(np.float32) / 255.0
+            else:
+                soft = mk.astype(np.float32)
+            soft3 = soft[..., None]
+            out = trans * soft3 + out * (1.0 - soft3)
+
+        results['img'] = np.clip(out, 0, 255).astype(np.uint8)
+        return results
+
+
+@ROTATED_PIPELINES.register_module()
+class MaskContourBlur:
+    """Object-aware contour blur augmentation.
+
+    Args:
+        blur_ksize (int): 블러 커널 크기 (홀수 권장, default=15)
+        contour_thickness (int): 외곽선 두께 (px)
+        per_instance (bool): 객체별로 독립 처리 여부
+        prob (float): 적용 확률
+        seed (int | None): 랜덤 시드
+    """
+
+    def __init__(self,
+                 blur_ksize=10,
+                 contour_thickness=3,
+                 per_instance=True,
+                 prob=0.5,
+                 seed=None):
+        self.blur_ksize = int(blur_ksize) | 1  # 홀수 보장
+        self.contour_thickness = int(contour_thickness)
+        self.per_instance = bool(per_instance)
+        self.prob = float(prob)
+        self.seed = seed
+        self.rng = np.random.default_rng(seed)
+
+    def __call__(self, results):
+        if self.rng.random() > self.prob:
+            return results
+
+        gt_masks = results.get('gt_masks', None)
+        if gt_masks is None:
+            return results
+
+        img = results['img']
+        if img.ndim == 2:
+            img = np.repeat(img[..., None], 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 1:
+            img = np.repeat(img, 3, axis=2)
+
+        out = img.astype(np.float32).copy()
+        masks = gt_masks.to_ndarray().astype(np.uint8)
+
+        if masks.ndim == 2:  # 단일 객체
+            masks = masks[None, ...]
+
+        if not self.per_instance:
+            masks = masks.max(axis=0, keepdims=True)
+
+        # 전체 블러 이미지 준비
+        blurred = cv2.GaussianBlur(img, (self.blur_ksize, self.blur_ksize), 0)
+
+        for mk in masks:
+            if mk.max() == 0:
+                continue
+
+            # 마스크 → binary
+            mask_bin = (mk > 0).astype(np.uint8) * 255
+
+            # 컨투어 추출
+            contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # 외곽선 부분만 마스크 생성
+            contour_mask = np.zeros_like(mask_bin)
+            cv2.drawContours(contour_mask, contours, -1, 255, thickness=self.contour_thickness)
+
+            # 3채널 확장
+            contour_mask_3 = np.repeat(contour_mask[..., None], 3, axis=2) / 255.0
+
+            # 외곽선만 블렌딩
+            out = blurred * contour_mask_3 + out * (1.0 - contour_mask_3)
+
+        results['img'] = np.clip(out, 0, 255).astype(np.uint8)
+        return results

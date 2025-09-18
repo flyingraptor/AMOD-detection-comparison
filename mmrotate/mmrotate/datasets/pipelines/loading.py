@@ -2,8 +2,9 @@
 import mmcv
 import numpy as np
 from mmdet.datasets.pipelines import LoadImageFromFile
-
+import os
 from ..builder import ROTATED_PIPELINES
+from mmdet.core import BitmapMasks
 
 
 @ROTATED_PIPELINES.register_module()
@@ -42,4 +43,31 @@ class LoadPatchFromImage(LoadImageFromFile):
         results['img_shape'] = patch.shape
         results['ori_shape'] = patch.shape
         results['img_fields'] = ['img']
+        return results
+
+@ROTATED_PIPELINES.register_module()
+class LoadAMODMasks:
+    """Load segmentation masks for AMOD dataset from .npy files.
+    
+    Each mask file is named 'Mask-{img_name}.npy'
+    Example: image 'EO_0000_0.png' -> mask 'Mask-EO_0000_0.npy'
+    """
+
+    def __init__(self, mask_prefix, file_suffix='.npy'):
+        self.mask_prefix = mask_prefix
+        self.file_suffix = file_suffix
+
+    def __call__(self, results):
+        img_filename = os.path.splitext(os.path.basename(results['img_info']['filename']))[0]
+        mask_filename = f"Mask-{img_filename}{self.file_suffix}"
+        mask_path = os.path.join(self.mask_prefix, mask_filename)
+
+        if not os.path.exists(mask_path):
+            results['gt_masks'] = None
+            return results
+
+        mask_array = np.load(mask_path).astype(np.uint8)
+
+        gt_masks = BitmapMasks(mask_array, height=mask_array.shape[1], width=mask_array.shape[2])
+        results['gt_masks'] = gt_masks
         return results

@@ -86,7 +86,8 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
             for angle in self.angles:
                 try:
                     # IMAGE
-                    img_file_name = f'{sample_idx}/{angle}/{self.modality}_{sample_idx}_{angle}.{self.ext}'
+                    img_file_name = os.path.join(self.data_root, self.img_prefix,str(sample_idx), str(angle),
+                                                f"{self.modality}_{sample_idx}_{angle}.{self.ext}")
                     assert os.path.exists(img_file_name), f'{img_file_name} does not exist!'
 
                     # LABEL
