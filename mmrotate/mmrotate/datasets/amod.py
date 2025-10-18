@@ -17,7 +17,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
     CLASSES_PALETTE_COMBINATION_DIC = {
         'Armored': (244, 67, 54),
         'Artillery': (255, 51, 204),
-        'Boat': (156, 39, 176),
+        # 'Boat': (156, 39, 176),
         'Helicopter': (103, 58, 183),
         'LCU': (63, 81, 181),
         'MLRS': (33, 150, 243),
@@ -86,21 +86,16 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
             for angle in self.angles:
                 try:
                     # IMAGE
-                    img_file_name = os.path.join(self.data_root, self.img_prefix,str(sample_idx), str(angle),
-                                                f"{self.modality}_{sample_idx}_{angle}.{self.ext}")
-                    assert os.path.exists(img_file_name), f'{img_file_name} does not exist!'
+                    img_path = os.path.join(self.data_root, self.img_prefix, str(sample_idx),
+                                            f'{self.modality}_{sample_idx}_{angle}.{self.ext}')
+                    assert os.path.exists(img_path), f'{img_path} does not exist!'
 
                     # LABEL
-                    if self.label_prefix is not None:  # For v1.5 label
-                        # self.label_prefix? 'train_label_v1.5' or 'test_label_v1.5'!
-                        annot_df = pd.read_csv(
-                            f'{self.data_root}{self.label_prefix}/Refined-{self.modality}_{sample_idx}_{angle}.csv'
-                        )
-                    else:
-                        annot_df = pd.read_csv(
-                            f'{self.img_prefix}/{sample_idx}/{angle}/ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv'
-                        ).query('usable == "T"')
+                    label_path = os.path.join(self.data_root, self.label_prefix,
+                                              f'ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv')
+                    assert os.path.exists(label_path), f'{label_path} does not exist!'
 
+                    annot_df = pd.read_csv(label_path)
                     if not len(annot_df):
                         continue
 
@@ -120,7 +115,7 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
                     obb_bboxes = obb_bboxes[valid_labels_inds]
 
                     data_info_list.append({
-                        'filename': img_file_name,
+                        'filename': img_path,
                         'width': self.width, 'height': self.height,
                         'ann': {
                             'bboxes': obb_bboxes,

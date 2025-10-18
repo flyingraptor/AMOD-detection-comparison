@@ -1,11 +1,11 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
 dataset_type = 'AMODDataset'
 angles = [0, 10, 20, 30, 40, 50]
-label_version = 'v1.5'              # 'v1.0' or 'v1.5' (We recommend using v1.5)
-data_root = 'data/AMOD_V1/'         # Important: should be ended with '/'
+label_version = '1.0'               # '1.0' or '1.5' (We recommend using v1.5)
+data_root = 'data/AMOD_V1.5/'       # Important: should be ended with '/'
 modality = 'EO'                     # 'eo' or 'ir'
 img_extension = 'png'               # 'png' or 'jpg'
-num_classes = 13                    # AMOD -> 13, AMOD_FG -> 25 (if civilian allowed? +1!)
+num_classes = 20                    # >= 12
 load_from = None
 resume_from = None
 img_norm_cfg = dict(mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -65,18 +65,18 @@ test_pipeline = [
             # dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])  # Not allowed for val/test!
         ])
 ]
-train_label_prefix = 'train_label_v1.5' if label_version == 'v1.5' else None
-test_label_prefix = 'test_label_v1.5' if label_version == 'v1.5' else None
+train_label_prefix = f'train/train_labels_v{label_version}'
+test_label_prefix = f'test/test_labels_v{label_version}' 
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
-    train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train', angles=angles,
+    train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train/train_imgs', angles=angles,
                pipeline=train_pipeline, version=angle_version, modality=modality,
                ext=img_extension, label_prefix=train_label_prefix),
-    val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train', angles=angles,
+    val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train/train_imgs', angles=angles,
              pipeline=test_pipeline, version=angle_version, modality=modality,
              ext=img_extension, label_prefix=train_label_prefix),
-    test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test', angles=angles,
+    test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test/test_imgs', angles=angles,
               pipeline=test_pipeline, version=angle_version, modality=modality,
               ext=img_extension, label_prefix=test_label_prefix)
 )
