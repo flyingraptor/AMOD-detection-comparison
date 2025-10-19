@@ -73,8 +73,7 @@ data = dict(
     train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train/train_imgs', angles=angles,
                pipeline=train_pipeline, version=angle_version, modality=modality,
                ext=img_extension, label_prefix=train_label_prefix),
-    # 'val.txt'을 임시로 'test.txt'로 변경하여 수행 -> 실험 편의
-    val=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test/test_imgs', angles=angles,
+    val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train/train_imgs', angles=angles,
              pipeline=test_pipeline, version=angle_version, modality=modality,
              ext=img_extension, label_prefix=train_label_prefix),
     test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test/test_imgs', angles=angles,
