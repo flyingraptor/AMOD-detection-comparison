@@ -5,9 +5,9 @@ from .hrsc import HRSCDataset  # noqa: F401, F403
 from .pipelines import *  # noqa: F401, F403
 from .sar import SARDataset  # noqa: F401, F403
 from .amod import *  # noqa: F401, F403
-from .dota_reconstructed import DOTADatasetReconstructed
-from .dior import DIORDataset
-from .dior_reconstructed import DIORDatasetReconstructed  # noqa: F
+from .dota_reconstructed import DOTADatasetReconstructed # noqa: F401, F403
+from .dior import DIORDataset # noqa: F401, F403
+from .dior_reconstructed import DIORDatasetReconstructed  # noqa: F401, F403
 from .hituav import HITUAVDataset  # noqa: F401, F403
 from .visdrone import VisDroneDataset  # noqa: F401, F403
 
