@@ -315,10 +315,10 @@ def print_map_summary(mean_ap,
             row_data = [
                 # label_names[j], num_gts[i, j], results[j]['num_dets'],
                 label_names[j], num_gts[i, j], results[j].get('num_dets', 0),
-                f'{recalls[i, j]:.3f}', f'{aps[i, j]:.3f}'
+                f'{recalls[i, j]:.4f}', f'{aps[i, j]:.4f}'
             ]
             table_data.append(row_data)
-        table_data.append(['mAP', '', '', '', f'{mean_ap[i]:.3f}'])
+        table_data.append(['mAP', '', '', '', f'{mean_ap[i]:.4f}'])
         table = AsciiTable(table_data)
         table.inner_footing_row_border = True
         print_log('\n' + table.table, logger=logger)
