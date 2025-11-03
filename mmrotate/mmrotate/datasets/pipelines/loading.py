@@ -74,7 +74,7 @@ class LoadSegmentMasks:
 
 
 @ROTATED_PIPELINES.register_module()
-class LoadAMODMasks:
+class LoadSegmentMasks:
     """Load segmentation masks for AMOD dataset from .npy files.
     
     Each mask file is named 'Mask-{img_name}.npy'
