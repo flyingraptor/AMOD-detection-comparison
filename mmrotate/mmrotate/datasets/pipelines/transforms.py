@@ -9,7 +9,7 @@ from mmcv.ops import box_iou_rotated
 from mmdet.datasets.pipelines.transforms import (Mosaic, RandomCrop,
                                                  RandomFlip, Resize)
 from numpy import random
-
+from mmcv.utils import build_from_cfg
 from mmrotate.core import norm_angle, obb2poly_np, poly2obb_np
 from ..builder import ROTATED_PIPELINES
 
@@ -565,60 +565,42 @@ class RMosaic(Mosaic):
 
 
 
-
-
 @ROTATED_PIPELINES.register_module()
 class MaskBrightness:
     """
-    Object-aware brightness augmentation (unified modes)
+    Object-aware brightness augmentation.
 
-    mode in {
-      'gaussian', 'average', 'median', 'fft', 'perlin', 'simplex'
-    }
-
-    모든 모드는 동일한 규약으로 저주파 필드를 생성:
-      field(H, W; sigma_like) -> float32 in [-1, 1]
+    mode in {'gaussian','average','median','fft','perlin','simplex'}
     """
 
     def __init__(self,
                  strength=0.25,
-                 blur_sigma=40,       
+                 blur_sigma=40,
                  feather_px=5,
                  per_instance=True,
                  preserve_mean=True,
                  prob=0.7,
                  seed=None,
                  mode='gaussian'):
-        
-        self.strength = float(strength) # 객체 내부 밝기 변조의 강도 0.25 면, 최대 1.25 최소 -1.25 까지 변화 가능
-        self.blur_sigma = float(blur_sigma)  # 노이즈 필드의 공간 스케일 역할 , 값이 클수록 더 완만하고 큰 스케일 변화 
-        self.feather_px = int(feather_px) # 변조와 함께 가장자리를 부드럽게 하여 , 자연스럽게 연결
-        self.per_instance = bool(per_instance) # True 면 객체별로 독립된 필드 생성 , False 면 이미지 전체에 대해 하나의 필드 사용
-        self.preserve_mean = bool(preserve_mean) # True 면 밝기 변조 후에도 평균 밝기 유지 , False 면 단순 변조
-        self.prob = float(prob) # 증강을 적용할 확률 
-        self.seed = seed # 난수 생성기 
+        self.strength = float(strength)
+        self.blur_sigma = float(blur_sigma)
+        self.feather_px = int(feather_px)
+        self.per_instance = bool(per_instance)
+        self.preserve_mean = bool(preserve_mean)
+        self.prob = float(prob)
         self.rng = np.random.default_rng(seed)
-        self.mode = str(mode).lower() # 필드 모드 선택
+        self.mode = str(mode).lower()
 
-
-        # Simplex용 permutation (reproducibility)
         self._perm256 = np.arange(256, dtype=np.int32)
         self.rng.shuffle(self._perm256)
         self._perm512 = np.concatenate([self._perm256, self._perm256])
-
-        # Simplex용 고정 gradients (12)
         self._grads12 = np.array([
             [ 1,  1], [-1,  1], [ 1, -1], [-1, -1],
             [ 1,  0], [-1,  0], [ 1,  0], [-1,  0],
             [ 0,  1], [ 0, -1], [ 0,  1], [ 0, -1]
         ], dtype=np.float32)
 
-
-    # -------------------------------------------------------------------
-    # blur_sigma 변수를 모든 블러/필드 모드에 사용할 수 있게 매핑하는 함수들
-    # -------------------------------------------------------------------
-
-    # 입력한 필드를 [-1,1] 범위로 정규화함
+    # ---- helpers (same as your code, kept) ----
     @staticmethod
     def _normalize(field: np.ndarray) -> np.ndarray:
         field = field.astype(np.float32, copy=False)
@@ -627,28 +609,19 @@ class MaskBrightness:
             return np.zeros_like(field, dtype=np.float32)
         return (2.0 * (field - fmin) / (fmax - fmin) - 1.0).astype(np.float32)
 
-    # average/median 용 openCV 처리를 위한 홀수 커널 크기 변환
     @staticmethod
     def _sigma_to_kernel(s: float) -> int:
         s = max(1.0, float(s))
         k = int(np.floor(6.0 * s + 1))
         if k % 2 == 0:
             k += 1
-        k = max(3, min(k, 255))  # OpenCV 제약
-        return k
+        return max(3, min(k, 255))
 
-    # FFT 기반 low-pass 필터에서 사용할 원형 마스크 반경을 시그마로 부터 계산
     @staticmethod
     def _sigma_to_radius(s: float) -> int:
-        """sigma_like -> FFT 원형 low-pass 반경."""
         s = max(1.0, float(s))
-        # 간단 스케일 매핑: radius ≈ 3*s
-        r = int(np.clip(np.round(3.0 * s), 1, 10_000))
-        return r
+        return int(np.clip(np.round(3.0 * s), 1, 10000))
 
-    # ------------------------------
-    # 각 모드의 통일된 생성자 (Unified generators)
-    # ------------------------------
     def _gen_gaussian(self, h, w, s):
         base = self.rng.normal(0, 1, size=(h, w)).astype(np.float32)
         field = cv2.GaussianBlur(base, (0, 0), s)
@@ -663,7 +636,6 @@ class MaskBrightness:
     def _gen_median(self, h, w, s):
         base = self.rng.normal(0, 1, size=(h, w)).astype(np.float32)
         k = self._sigma_to_kernel(s)
-        # medianBlur는 float32 불가 → uint8 왕복, 이후 공통 normalize
         bmin, bmax = float(base.min()), float(base.max())
         if bmax - bmin < 1e-6:
             return np.zeros((h, w), dtype=np.float32)
@@ -685,8 +657,6 @@ class MaskBrightness:
         return self._normalize(field)
 
     def _gen_perlin(self, h, w, s):
-        """Upsample noise + GaussianBlur; s는 공간 스케일."""
-        # 저해상도 크기: s가 클수록 더 저주파 → 더 작은 샘플 크기
         down = int(max(4, min(64, np.round(max(h, w) / max(8.0, s*2.0)))))
         sh = max(2, h // down + 1)
         sw = max(2, w // down + 1)
@@ -695,95 +665,58 @@ class MaskBrightness:
         field = cv2.GaussianBlur(field, (0, 0), s)
         return self._normalize(field)
 
-    # ---- Simplex 2D ----
     def _simplex2d(self, x, y):
         F2 = 0.5 * (np.sqrt(3.0) - 1.0)
         G2 = (3.0 - np.sqrt(3.0)) / 6.0
-
         s = (x + y) * F2
         i = np.floor(x + s).astype(np.int32)
         j = np.floor(y + s).astype(np.int32)
-
         t = (i + j) * G2
-        X0 = i - t
-        Y0 = j - t
-        x0 = x - X0
-        y0 = y - Y0
-
-        i1 = (x0 > y0).astype(np.int32)
-        j1 = 1 - i1
-
-        x1 = x0 - i1 + G2
-        y1 = y0 - j1 + G2
-        x2 = x0 - 1.0 + 2.0 * G2
-        y2 = y0 - 1.0 + 2.0 * G2
-
-        ii = (i & 255)
-        jj = (j & 255)
-        perm = self._perm512
-
+        X0 = i - t; Y0 = j - t
+        x0 = x - X0; y0 = y - Y0
+        i1 = (x0 > y0).astype(np.int32); j1 = 1 - i1
+        x1 = x0 - i1 + G2; y1 = y0 - j1 + G2
+        x2 = x0 - 1.0 + 2.0 * G2; y2 = y0 - 1.0 + 2.0 * G2
+        ii = (i & 255); jj = (j & 255); perm = self._perm512
         gi0 = perm[ii + perm[jj]] % 12
         gi1 = perm[(ii + i1) + perm[(jj + j1)]] % 12
         gi2 = perm[(ii + 1) + perm[(jj + 1)]] % 12
-
-        g0 = self._grads12[gi0]
-        g1 = self._grads12[gi1]
-        g2 = self._grads12[gi2]
-
+        g0 = self._grads12[gi0]; g1 = self._grads12[gi1]; g2 = self._grads12[gi2]
         def contrib(t, gx, gy, dx, dy):
             mask = t > 0
-            t2 = np.where(mask, t * t, 0.0)
-            t4 = t2 * t2
+            t2 = np.where(mask, t * t, 0.0); t4 = t2 * t2
             dot = gx * dx + gy * dy
             return np.where(mask, t4 * dot, 0.0)
-
         t0 = 0.5 - x0 * x0 - y0 * y0
         t1 = 0.5 - x1 * x1 - y1 * y1
         t2 = 0.5 - x2 * x2 - y2 * y2
-
         n0 = contrib(t0, g0[..., 0], g0[..., 1], x0, y0)
         n1 = contrib(t1, g1[..., 0], g1[..., 1], x1, y1)
         n2 = contrib(t2, g2[..., 0], g2[..., 1], x2, y2)
-
         noise = 70.0 * (n0 + n1 + n2)
         noise = np.clip(noise, -1.5, 1.5)
         return noise.astype(np.float32)
 
     def _gen_simplex(self, h, w, s):
-        """Simplex noise; s는 공간 스케일 → freq = 1/s."""
         base = max(8.0, float(s))
         freq = 1.0 / base
         yy, xx = np.meshgrid(np.arange(h, dtype=np.float32),
-                             np.arange(w, dtype=np.float32),
-                             indexing='ij')
+                             np.arange(w, dtype=np.float32), indexing='ij')
         raw = self._simplex2d(xx * freq, yy * freq)
         return self._normalize(raw)
 
-    # ------------------------------
-    # 통일된 디스패처 (Unified dispatcher)
-    # ------------------------------
     def _lowfreq_field(self, h, w):
-        s = self.blur_sigma  # 공통 스케일 파라미터
+        s = self.blur_sigma
         m = self.mode
-        if m == 'gaussian':
-            return self._gen_gaussian(h, w, s)
-        elif m == 'average':
-            return self._gen_average(h, w, s)
-        elif m == 'median':
-            return self._gen_median(h, w, s)
-        elif m == 'fft':
-            return self._gen_fft(h, w, s)
-        elif m == 'perlin':
-            return self._gen_perlin(h, w, s)
-        elif m == 'simplex':
-            return self._gen_simplex(h, w, s)
+        if   m == 'gaussian': return self._gen_gaussian(h, w, s)
+        elif m == 'average' : return self._gen_average(h, w, s)
+        elif m == 'median'  : return self._gen_median(h, w, s)
+        elif m == 'fft'     : return self._gen_fft(h, w, s)
+        elif m == 'perlin'  : return self._gen_perlin(h, w, s)
+        elif m == 'simplex' : return self._gen_simplex(h, w, s)
         else:
-            raise ValueError("mode must be one of "
-                             "{'gaussian','average','median','fft','perlin','simplex'}")
+            raise ValueError("mode must be one of {'gaussian','average','median','fft','perlin','simplex'}")
 
-    # ------------------------------
-    # Transform 본체
-    # ------------------------------
     def __call__(self, results):
         if self.rng.random() > self.prob:
             return results
@@ -799,32 +732,35 @@ class MaskBrightness:
             img = np.repeat(img, 3, axis=2)
 
         out = img.astype(np.float32).copy()
-        masks = gt_masks.to_ndarray().astype(np.uint8)
+        masks = gt_masks.to_ndarray().astype(np.uint8)  # (N,H,W) or (H,W)
         if masks.ndim == 2:
             masks = masks[None, ...]
         if not self.per_instance:
             masks = masks.max(axis=0, keepdims=True)
 
-        H, W = img.shape[:2]
+        H, W = out.shape[:2]
 
         for mk in masks:
             if mk.max() == 0:
                 continue
 
-            field = self._lowfreq_field(H, W)
+            # -- ensure mask matches field size --
+            mk = (mk > 0).astype(np.uint8)
+            if mk.shape != (H, W):
+                mk = cv2.resize(mk, (W, H), interpolation=cv2.INTER_NEAREST)
 
-            if self.preserve_mean and mk.sum() > 0:
-                field = field - field[mk > 0].mean()
+            field = self._lowfreq_field(H, W)  # (H,W) float32 in [-1,1]
 
-            scale = 1.0 + self.strength * field
-            trans = out * scale[..., None]
+            if self.preserve_mean and mk.any():
+                mu = field[mk.astype(bool)].mean()
+                field = field - mu
+
+            scale = 1.0 + self.strength * field      # (H,W)
+            trans = out * scale[..., None]           # (H,W,3)
 
             if self.feather_px > 0:
-                soft = cv2.GaussianBlur(
-                    mk * 255,
-                    (self.feather_px * 2 + 1, self.feather_px * 2 + 1),
-                    0
-                ).astype(np.float32) / 255.0
+                k = self.feather_px * 2 + 1          # odd
+                soft = cv2.GaussianBlur(mk * 255, (k, k), 0).astype(np.float32) / 255.0
             else:
                 soft = mk.astype(np.float32)
 
@@ -837,15 +773,7 @@ class MaskBrightness:
 
 @ROTATED_PIPELINES.register_module()
 class MaskContourBlur:
-    """Object-aware contour blur augmentation.
-
-    Args:
-        blur_ksize (int): 블러 커널 크기 (홀수 권장)
-        contour_thickness (tuple[int,int]): (min, max) 두께 범위(px)
-        per_instance (bool): True면 객체별 독립 처리 (각 객체마다 두께 랜덤 샘플링)
-        prob (float): 적용 확률
-        seed (int | None): 랜덤 시드
-    """
+    """Object-aware contour blur augmentation."""
 
     def __init__(self,
                  blur_ksize=10,
@@ -853,23 +781,22 @@ class MaskContourBlur:
                  per_instance=True,
                  prob=0.5,
                  seed=None):
-        
-        self.blur_ksize = int(blur_ksize) | 1  # 홀수 보장
-        assert isinstance(contour_thickness, (tuple, list)) and len(contour_thickness) == 2, \
-            "contour_thickness는 (min, max) 형태여야 합니다."
-        self.tmin, self.tmax = map(int, contour_thickness)
+        # 홀수 커널 보장
+        k = int(blur_ksize)
+        if k % 2 == 0:
+            k += 1
+        self.blur_ksize = max(3, k)
 
+        assert isinstance(contour_thickness, (tuple, list)) and len(contour_thickness) == 2
+        self.tmin, self.tmax = map(int, contour_thickness)
         self.per_instance = bool(per_instance)
         self.prob = float(prob)
-        self.seed = seed
         self.rng = np.random.default_rng(seed)
 
     def _sample_thickness(self) -> int:
-        """두께 샘플링: min~max 범위 내 랜덤 정수"""
         return int(self.rng.integers(self.tmin, self.tmax + 1))
 
     def __call__(self, results):
-        # 확률 체크
         if self.rng.random() > self.prob:
             return results
 
@@ -884,37 +811,60 @@ class MaskContourBlur:
             img = np.repeat(img, 3, axis=2)
 
         out = img.astype(np.float32).copy()
-        masks = gt_masks.to_ndarray().astype(np.uint8)
+        H, W = out.shape[:2]
 
+        masks = gt_masks.to_ndarray().astype(np.uint8)  # (N,H,W) or (H,W)
         if masks.ndim == 2:
             masks = masks[None, ...]
-
-        # per_instance=False → 모든 객체를 합쳐 한 번만 처리
         if not self.per_instance:
             masks = masks.max(axis=0, keepdims=True)
-            thickness = self._sample_thickness()  # 한 번만 샘플링
+            thickness = self._sample_thickness()
         else:
-            thickness = None  # 각 객체마다 새로 샘플링
+            thickness = None
 
-        # 전체 블러 사전 계산
-        blurred = cv2.GaussianBlur(img, (self.blur_ksize, self.blur_ksize), 0)
+        # blurred는 반드시 '현재 out'에서 생성
+        blurred = cv2.GaussianBlur(out, (self.blur_ksize, self.blur_ksize), 0)
 
-        # 객체별 처리
         for mk in masks:
             if mk.max() == 0:
                 continue
+            # 크기 정렬
+            mk = (mk > 0).astype(np.uint8)
+            if mk.shape != (H, W):
+                mk = cv2.resize(mk, (W, H), interpolation=cv2.INTER_NEAREST)
 
-            mask_bin = (mk > 0).astype(np.uint8) * 255
+            t = self._sample_thickness() if self.per_instance else thickness
+            mask_bin = mk * 255
             contours, _ = cv2.findContours(mask_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            # per_instance=True → 객체마다 샘플링
-            t = self._sample_thickness() if self.per_instance else thickness
-
-            contour_mask = np.zeros_like(mask_bin)
+            contour_mask = np.zeros((H, W), dtype=np.uint8)
             cv2.drawContours(contour_mask, contours, -1, 255, thickness=t)
 
-            contour_mask_3 = np.repeat(contour_mask[..., None], 3, axis=2).astype(np.float32) / 255.0
+            contour_mask_3 = (contour_mask.astype(np.float32) / 255.0)[..., None]
+            contour_mask_3 = np.repeat(contour_mask_3, 3, axis=2)
+
             out = blurred * contour_mask_3 + out * (1.0 - contour_mask_3)
 
         results['img'] = np.clip(out, 0, 255).astype(np.uint8)
         return results
+
+@ROTATED_PIPELINES.register_module()
+class RandomChoose:
+    """Randomly pick ONE transform from a list (probabilities can be changed at runtime).
+    (Epoch-wise hook will toggle self.probs so that only one is active per epoch.)
+    """
+    def __init__(self, transforms, probs=None):
+        assert isinstance(transforms, (list, tuple)) and len(transforms) >= 1
+        self.transforms = [build_from_cfg(t, ROTATED_PIPELINES) if isinstance(t, dict) else t
+                           for t in transforms]
+        if probs is None:
+            probs = [1.0 / len(self.transforms)] * len(self.transforms)
+        assert abs(sum(probs) - 1.0) < 1e-6
+        self.probs = probs
+
+    def __call__(self, results):
+        idx = np.random.choice(len(self.transforms), p=self.probs)
+        return self.transforms[idx](results)
+
+    def __repr__(self):
+        return f"RandomChoose(probs={self.probs}, transforms={self.transforms})"
