@@ -35,9 +35,6 @@
 > [!NOTE]
 > Please note that our deep learning code is developed and tested on Linux. Windows is not officially supported.
 
-### Announcements:
-* Feb 4 2025: You can run mock tests using the small-scale, tailored data we provide. See `data/AMOD_MOCK`!
-
 ### Preliminaries [For 🐳 Docker users]:
 <details>
 <summary> Install Docker? (Ubuntu) </summary>
