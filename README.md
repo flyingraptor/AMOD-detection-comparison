@@ -1,5 +1,5 @@
 <div align="center">
-    <img alt="AMOD: Arma3 Military Object Detection" src="./mmrotate/Logo.svg" />
+    <img alt="AMOD: Arma3 Multi-view Object Detection" src="./mmrotate/Logo.svg" />
 </div>
 
 <hr>
@@ -25,7 +25,8 @@
 </p>
 
 ### What is AMOD?
-* Here, `AMOD` refers to our large-scale synthetic dataset, <u>A</u>rma3 <u>M</u>ilitary <u>O</u>bject <u>D</u>etection!
+* Here, `AMOD` refers to our large-scale synthetic dataset, <u>A</u>rma3 <u>M</u>ulti-view <u>O</u>bject <u>D</u>etection in aerial imagery!
+* Categories of AMOD: *Armored, Artillery, Helicopter, LCU, MLRS, Plane, RADAR, SAM, Self-propelled Artillery, Support, Tank, TEL*.
 * For additional information, we direct readers to [our official project homepage](https://sites.google.com/view/yechankim/amod).
 
 ### This repo includes:
