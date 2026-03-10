@@ -1,8 +1,8 @@
 # 🚩 DEFAULT CONFIG ####################################################################################################
 dataset_type = 'AMODDataset'
 angles = [0, 10, 20, 30, 40, 50]
-label_version = '1.0'               # '1.0' or '1.5' (We recommend using v1.5)
-data_root = 'data/AMOD_V1.5/'       # Important: should be ended with '/'
+label_version = '1.2'               
+data_root = 'LIG-AMOD/'             # Important: should be ended with '/'
 modality = 'EO'                     # 'eo' or 'ir'
 img_extension = 'png'               # 'png' or 'jpg'
 num_classes = 20                    # >= 12

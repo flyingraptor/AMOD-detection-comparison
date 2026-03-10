@@ -18,19 +18,33 @@
 
 <hr>
 
-<p align="center">
-  Correspondence to 
-  <b>Yechan Kim</b> and
-  <b>SooYeon Kim</b>
-</p>
-
 ### What is AMOD?
 * Here, `AMOD` refers to our large-scale synthetic dataset, <u>A</u>rma3 <u>M</u>ulti-view <u>O</u>bject <u>D</u>etection in aerial imagery!
 * Categories of AMOD: *Armored, Artillery, Helicopter, LCU, MLRS, Plane, RADAR, SAM, Self-propelled Artillery, Support, Tank, TEL*.
-* For additional information, we direct readers to [our official project homepage](https://sites.google.com/view/yechankim/amod).
+* The dataset structure is as follows:
+~~~
+|—— 📁 train
+	|—— 📁 train_imgs
+		|—— 📁 0000 // scene number
+			|—— 🖼️ EO_0000_0.png // image at look angle 0 for scene "0000"
+			|—— 🖼️ EO_0000_10.png
+                ...
+            |—— 🖼️ EO_0000_50.png
+		|—— ...
+	|—— 📁 train_labels
+		|—— 📄 ANNOTATION-EO_0000_0.csv // annotation file for "EO_0000_0.png"
+		|—— 📄 ANNOTATION-EO_0000_10.csv
+            ...
+|—— 📁 test
+	|—— 📁 test_imgs
+    |—— 📁 test_labels
+|—— 📄 train.txt        // scene number list for train split
+|—— 📄 val.txt          // scene number list for validation split
+|—— 📄 test.txt         // scene number list for test split
+~~~
+
 
 ### This repo includes:
-* [Dataset download link](https://sites.google.com/view/yechankim/amod) for AMOD
 * Training & test code for AMOD!
 > [!NOTE]
 > Please note that our deep learning code is developed and tested on Linux. Windows is not officially supported.
@@ -190,7 +204,6 @@ python mmrotate/tools/test.py ${CONFIG_FILE} ${CHECKPOINT_FILE} [optional argume
 Examples:
 
 * Test OrientedRCNN with Swin-S pretrained on AMOD
-  * Please download our pretrained weights [here](#)!
   * Run the following command to get AP50, AP75 of test split of AMOD:
   ~~~shell
   python mmrotate/tools/test.py my_config/orientedrcnn_swinS_fpn_angle0,10,20,30,40,50_30epochs_le90_amod.py \
