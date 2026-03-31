@@ -70,7 +70,7 @@ A two-stage detector: it first proposes candidate regions, then classifies and r
 
 ![Oriented R-CNN pipeline](/docs/figures/fig_rcnn_pipeline.png)
 
-I used the MMRotate 0.3.4 implementation from the original AMOD repository. The config required several changes to run on my machine (RTX 5090 24 GB, Intel Core Ultra 9 275HX, 64 GB RAM, Ubuntu Linux), listed in the [experiment repository](https://github.com/flyingraptor/AMOD-detection-comparison):
+The implementation comes from the [original AMOD repository](https://github.com/unique-chan/AMOD) by unique-chan, which ships a ready-made MMRotate 0.3.4 config targeting this dataset specifically. I did not implement the model from scratch; I adapted it to run on modern hardware. The config required several changes to run on my machine (RTX 5090 24 GB, Intel Core Ultra 9 275HX, 64 GB RAM, Ubuntu Linux), listed in the [experiment repository](https://github.com/flyingraptor/AMOD-detection-comparison):
 
 | Change | Reason |
 |---|---|
