@@ -16,7 +16,7 @@ If you have ever played ArmA 3, you know two things: it is the most realistic mi
 
 I also recently got an RTX 5090 laptop. A 24 GB GPU sitting mostly idle while I write code felt like a personal insult, so I decided to give it something to think about. Training two large object detection models back to back for a total of 33 hours seemed like a reasonable punishment for the card, and a good excuse to finally run an experiment I had been putting off. I also wanted to try YOLO26, which came out in January 2026, about three months ago, and already has oriented bounding box support. So it ended up being three models.
 
-I recently ran a controlled comparison of three object detection models on the same dataset to settle a question I had: is a heavy two-stage detector actually more accurate than a lightweight single-stage one on aerial imagery, or does the efficiency gap come for free?
+So I ran a comparison of three object detection models on the same dataset to settle a question I had: is a heavy two-stage detector actually more accurate than a lightweight single-stage one on aerial imagery, or does the efficiency gap come for free?
 
 The short answer is that both YOLO11s-OBB and YOLO26s-OBB beat Oriented R-CNN overall at roughly one seventh of the parameter count. But the per-class breakdown tells a more nuanced story, and the results come with a significant caveat: this is synthetic data from a video game, and the high accuracy numbers reflect that.
 
