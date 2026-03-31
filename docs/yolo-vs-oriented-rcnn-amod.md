@@ -14,7 +14,7 @@ tags: ["ai", "engineering"]
 
 If you have ever played ArmA 3, you know two things: it is the most realistic military simulator ever made, and at some point a friendly soldier will get run over by his own jeep in a flat open field with no enemies nearby. The game is a goldmine for emergent chaos. It is also, apparently, a goldmine for aerial object detection training data.
 
-I also recently got an RTX 5090 laptop. A 24 GB GPU sitting mostly idle while I write code felt like a personal insult, so I decided to give it something to think about. Training two large object detection models back to back for a total of 33 hours seemed like a reasonable punishment for the card, and a good excuse to finally run an experiment I had been putting off.
+I also recently got an RTX 5090 laptop. A 24 GB GPU sitting mostly idle while I write code felt like a personal insult, so I decided to give it something to think about. Training two large object detection models back to back for a total of 33 hours seemed like a reasonable punishment for the card, and a good excuse to finally run an experiment I had been putting off. I also wanted to try YOLO26, which came out in January 2026, about three months ago, and already has oriented bounding box support. So it ended up being three models.
 
 I recently ran a controlled comparison of three object detection models on the same dataset to settle a question I had: is a heavy two-stage detector actually more accurate than a lightweight single-stage one on aerial imagery, or does the efficiency gap come for free?
 
@@ -106,7 +106,7 @@ Training setup was matched to Oriented R-CNN where possible: 30 epochs, batch si
 
 ### YOLO26s-OBB
 
-The second-generation single-stage model. YOLO26 was released in January 2026 and introduces three changes directly relevant to oriented detection:
+The second-generation single-stage model. YOLO26 was released in January 2026, roughly three months before this experiment, so it is about as fresh as it gets. It introduces three changes directly relevant to oriented detection:
 
 - **Dedicated angle loss:** an explicit `angle_loss` term in the training objective, designed to fix the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
 - **`OBB26` head:** a new dedicated OBB detection head with refined angle decoding.
