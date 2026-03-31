@@ -92,7 +92,7 @@ Training setup:
 
 ### YOLO11s-OBB
 
-A single-stage, anchor-free detector. It predicts oriented boxes directly from feature maps in one forward pass, no region proposals needed. The architecture uses C3k2 blocks for the backbone and a C2PSA neck for spatial attention. YOLO11 still uses NMS at inference — end-to-end NMS-free inference came in the next generation.
+A single-stage, anchor-free detector. It predicts oriented boxes directly from feature maps in one forward pass, no region proposals needed. The architecture uses C3k2 blocks for the backbone and a C2PSA neck for spatial attention. YOLO11 still uses NMS at inference. End-to-end NMS-free inference came in the next generation.
 
 ![YOLO11s-OBB pipeline](/docs/figures/fig_yolo_pipeline.png)
 
@@ -104,11 +104,11 @@ Training setup was matched to Oriented R-CNN where possible: 30 epochs, batch si
 
 The second-generation single-stage model. YOLO26 was released in January 2026 and introduces three changes directly relevant to oriented detection:
 
-- **Dedicated angle loss** — an explicit `angle_loss` term in the training objective, designed to fix the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
-- **`OBB26` head** — a new dedicated OBB detection head with refined angle decoding.
-- **End-to-end NMS-free inference** — predictions produced directly without a post-processing NMS step.
+- **Dedicated angle loss:** an explicit `angle_loss` term in the training objective, designed to fix the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
+- **`OBB26` head:** a new dedicated OBB detection head with refined angle decoding.
+- **End-to-end NMS-free inference:** predictions produced directly without a post-processing NMS step.
 
-Model stats: 10.5M parameters, 24.5 GFLOPs (model summary at 1024px) — marginally larger than YOLO11s but in the same weight class. Everything else — epochs, batch size, optimizer, learning rate, augmentation — was kept identical to YOLO11s for a direct comparison.
+Model stats: 10.5M parameters, 24.5 GFLOPs (model summary at 1024px), marginally larger than YOLO11s but in the same weight class. Epochs, batch size, optimizer, learning rate, and augmentation were all kept identical to YOLO11s for a direct comparison.
 
 ![YOLO model comparison](/docs/figures/fig_yolo_comparison.png)
 *Ultralytics YOLO model family comparison (source: Ultralytics documentation). YOLO11s and YOLO26s sit at essentially the same accuracy-latency operating point at the small-model scale.*
@@ -164,7 +164,7 @@ Oriented R-CNN holds a meaningful lead on Self-propelled Artillery (-0.217 for Y
 
 The Helicopter result deserves a note. R-CNN's lowest AP across all classes is Helicopter at 0.7946, well below its 0.895-0.909 range on other classes. At shallow oblique angles (40°-50°), rotor blades and fuselage produce elongated OBB aspect ratios that are hard for a region proposal network to regress accurately. YOLO11s's anchor-free head, combined with wide rotation augmentation, handles this without the intermediate proposal step.
 
-The key question for YOLO26s is whether the dedicated angle loss closes any of these gaps — particularly on Helicopter and Self-propelled Artillery, where OBB angle regression is hardest. [Fill in once YOLO26s results are available.]
+The key question for YOLO26s is whether the dedicated angle loss closes any of these gaps, particularly on Helicopter and Self-propelled Artillery, where OBB angle regression is hardest. [Fill in once YOLO26s results are available.]
 
 ---
 
