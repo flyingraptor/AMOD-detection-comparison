@@ -26,6 +26,11 @@ All training configs, raw logs, and reproducibility notes are in [the experiment
 
 > **Note on synthetic data.** The AMOD dataset is rendered in ArmA 3, not collected from real sensors. Uniform lighting, clean backgrounds, no motion blur, no sensor noise. The mAP numbers here are not representative of real-world aerial detection performance. This is a study of model training dynamics and architectural trade-offs in a controlled environment.
 
+![Detection example 1](/docs/figures/fig_detection_ex1.png)
+![Detection example 2](/docs/figures/fig_detection_ex2.png)
+![Detection example 3](/docs/figures/fig_detection_ex3.png)
+*Three scenes from the AMOD validation set with oriented bounding box predictions. Oblique viewing angles, mixed terrain, different object densities.*
+
 ---
 
 ## The Dataset: AMOD
@@ -138,18 +143,6 @@ MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and r
 
 ![Validation mAP per epoch](/docs/figures/fig_map_curves.png)
 *Validation mAP@50 per epoch. Both models converge, but YOLO reaches its peak faster.*
-
-### Detection examples
-
-<table>
-<tr>
-<td><img src="/docs/figures/fig_detection_ex1.png" width="100%"/></td>
-<td><img src="/docs/figures/fig_detection_ex2.png" width="100%"/></td>
-<td><img src="/docs/figures/fig_detection_ex3.png" width="100%"/></td>
-</tr>
-</table>
-
-*Three scenes from the AMOD validation set. Oblique viewing angles, mixed terrain, different object densities. Oriented boxes fit the vehicles tightly regardless of heading.*
 
 ### Per-class AP
 
