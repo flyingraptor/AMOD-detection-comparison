@@ -123,9 +123,9 @@ A quick note on the metrics before the numbers. **mAP** (mean Average Precision)
 
 | Model | mAP@50 | mAP@50:95 | Precision | Recall | FPS | Train (h) | Params (M) | GFLOPs |
 |---|---|---|---|---|---|---|---|---|
-| Oriented R-CNN + Swin-S | 0.8952 | n/a | n/a | n/a | n/a | ~28 | ~69 | ~190 |
-| YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 | ~5 | 9.7 | 22.3 |
-| **YOLO26s-OBB** | **[mAP@50]** | **[mAP@50:95]** | **[P]** | **[R]** | **[FPS]** | **~5** | **10.5** | **24.5** |
+| Oriented R-CNN + Swin-S | 0.8952 | n/a | n/a | n/a | n/a | 28 | ~69 | ~190 |
+| YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 | 5 | 9.7 | 22.3 |
+| **YOLO26s-OBB** | **[mAP@50]** | **[mAP@50:95]** | **[P]** | **[R]** | **[FPS]** | **[h]** | **10.5** | **24.5** |
 
 MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and recall are not available for Oriented R-CNN. Inference speed was not benchmarked for R-CNN. YOLO's 256 FPS figure (3.9 ms per image) comes from the Ultralytics `.val()` run on an RTX 5090 24 GB, Intel Core Ultra 9 275HX (24 cores), 64 GB RAM, Linux.
 

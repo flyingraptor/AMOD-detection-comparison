@@ -122,7 +122,7 @@ tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
 | Precision | — | ✅ 0.889 | Not reported by MMRotate |
 | Recall | — | ✅ 0.834 | Not reported by MMRotate |
 | FPS | — | ✅ ~256 (3.9ms) | RCNN not benchmarked |
-| Training time | ✅ ~28h | ✅ ~5h | Wall-clock, RTX 5090 |
+| Training time | ✅ 28h | ✅ 5h | Wall-clock, RTX 5090 (confirmed) |
 | Parameters (M) | ✅ ~69M | ✅ 9.7M | Architecture-level |
 | GFLOPs | ✅ ~190 | ✅ 22.3 | At model-summary resolution |
 
@@ -371,9 +371,9 @@ This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s
 
 | Run | Status | Notes |
 |---|---|---|
-| OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | ~28h total, fp16, batch=4. |
-| YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | ~5h total, fp16, batch=4. |
-| YOLO26s-B | 🔄 **TRAINING** — epoch 1/30 | Ultralytics 8.4.33, same hyps as YOLO11s. |
+| OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | **28h** wall-clock, fp16, batch=4. |
+| YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | **5h** wall-clock, fp16, batch=4. |
+| YOLO26s-B | 🔄 **TRAINING** — epoch 1/30 | Ultralytics 8.4.33, same hyps as YOLO11s. Record exact time from final log line. |
 
 ---
 
