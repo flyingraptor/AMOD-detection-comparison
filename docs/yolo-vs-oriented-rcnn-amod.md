@@ -139,6 +139,18 @@ MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and r
 ![Validation mAP per epoch](/docs/figures/fig_map_curves.png)
 *Validation mAP@50 per epoch. Both models converge, but YOLO reaches its peak faster.*
 
+### Detection examples
+
+<table>
+<tr>
+<td><img src="/docs/figures/fig_detection_ex1.png" width="100%"/></td>
+<td><img src="/docs/figures/fig_detection_ex2.png" width="100%"/></td>
+<td><img src="/docs/figures/fig_detection_ex3.png" width="100%"/></td>
+</tr>
+</table>
+
+*Three scenes from the AMOD validation set. Oblique viewing angles, mixed terrain, different object densities. Oriented boxes fit the vehicles tightly regardless of heading.*
+
 ### Per-class AP
 
 The headline number hides more than it reveals. Here is the full breakdown:
