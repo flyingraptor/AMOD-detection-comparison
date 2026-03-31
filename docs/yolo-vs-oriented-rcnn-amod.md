@@ -12,6 +12,8 @@ tags: ["ai", "engineering"]
 
 ---
 
+If you have ever played ArmA 3, you know two things: it is the most realistic military simulator ever made, and at some point a friendly soldier will get run over by his own jeep in a flat open field with no enemies nearby. The game is a goldmine for emergent chaos. It is also, apparently, a goldmine for aerial object detection training data.
+
 I recently ran a controlled comparison of three object detection models on the same dataset to settle a question I had: is a heavy two-stage detector actually more accurate than a lightweight single-stage one on aerial imagery, or does the efficiency gap come for free?
 
 The short answer is that both YOLO11s-OBB and YOLO26s-OBB beat Oriented R-CNN overall at roughly one seventh of the parameter count. But the per-class breakdown tells a more nuanced story, and the results come with a significant caveat: this is synthetic data from a video game, and the high accuracy numbers reflect that.
