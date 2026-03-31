@@ -244,6 +244,9 @@ fabric.properties
 
 # --- AMOD study additions ---
 
+# Paper draft — kept local, published separately
+docs/ARTICLE.md
+
 # Dataset images and labels (re-download from HuggingFace: unique-chan/AMOD-V1.0)
 # Exclude all scene subdirectories (images + per-image YOLO labels + cache)
 # Top-level split index files (val.txt, val_mini.txt, etc.) are kept
