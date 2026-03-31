@@ -343,7 +343,10 @@ class RotatedRPNHead(AnchorHead):
             gt_labels_list=None,
             label_channels=label_channels)
         if cls_reg_targets is None:
-            return None
+            return dict(
+                loss_rpn_cls=[s.sum() * 0 for s in cls_scores],
+                loss_rpn_bbox=[p.sum() * 0 for p in bbox_preds]
+            )
         (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
          num_total_pos, num_total_neg) = cls_reg_targets
         num_total_samples = (

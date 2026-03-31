@@ -120,15 +120,17 @@ class RotatedSingleRoIExtractor(BaseRoIExtractor):
         if torch.__version__ == 'parrots':
             roi_feats.requires_grad = True
 
+        if rois.size(0) == 0:
+            return roi_feats
+
         if num_levels == 1:
-            if len(rois) == 0:
-                return roi_feats
             return self.roi_layers[0](feats[0], rois)
 
         target_lvls = self.map_roi_levels(rois, num_levels)
         if roi_scale_factor is not None:
             rois = self.roi_rescale(rois, roi_scale_factor)
 
+        device = rois.device
         for i in range(num_levels):
             mask = target_lvls == i
             inds = mask.nonzero(as_tuple=False).squeeze(1)

@@ -222,11 +222,10 @@ def delta2bbox(rois,
     center = torch.stack([gx, gy, gx, gy, gx, gy, gx, gy], dim=-1)
     center_polys = polys - center
     diag_len = torch.sqrt(center_polys[..., 0::2] * center_polys[..., 0::2] +
-                          center_polys[..., 1::2] * center_polys[..., 1::2])
+                          center_polys[..., 1::2] * center_polys[..., 1::2]).clamp(min=1e-6)
     max_diag_len, _ = torch.max(diag_len, dim=-1, keepdim=True)
-    diag_scale_factor = max_diag_len / diag_len
-    center_polys = center_polys * diag_scale_factor.repeat_interleave(
-        2, dim=-1)
+    diag_scale_factor = (max_diag_len / diag_len).nan_to_num(nan=1.0, posinf=1.0)
+    center_polys = center_polys * diag_scale_factor.repeat_interleave(2, dim=-1)
     rectpolys = center_polys + center
     obboxes = poly2obb(rectpolys, version)
     return obboxes

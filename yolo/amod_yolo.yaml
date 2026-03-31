@@ -1,0 +1,19 @@
+path: /home/flyingalien/Repositories/AMOD/data
+train: yolo_train.txt
+val:   yolo_val_mini.txt
+test:  yolo_test.txt
+
+nc: 12
+names:
+  0:  Armored
+  1:  Artillery
+  2:  Helicopter
+  3:  LCU
+  4:  MLRS
+  5:  Plane
+  6:  RADAR
+  7:  SAM
+  8:  Self-propelled Artillery
+  9:  Support
+  10: Tank
+  11: TEL

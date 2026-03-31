@@ -241,3 +241,23 @@ fabric.properties
 
 # No vscode
 .vscode/
+
+# --- AMOD study additions ---
+
+# Dataset images and labels (re-download from HuggingFace: unique-chan/AMOD-V1.0)
+# Exclude all scene subdirectories (images + per-image YOLO labels + cache)
+# Top-level split index files (val.txt, val_mini.txt, etc.) are kept
+data/test/
+data/train
+
+# Model weights (re-download from Ultralytics / MMRotate model zoo)
+*.pt
+*.pth
+*.ckpt
+
+# Training outputs — checkpoints and TensorBoard logs
+work_dirs/
+runs/
+
+# Python version pin (environment-specific)
+.python-version

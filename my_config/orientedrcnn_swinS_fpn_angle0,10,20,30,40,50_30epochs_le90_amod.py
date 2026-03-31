@@ -2,7 +2,7 @@
 dataset_type = 'AMODDataset'
 angles = [0, 10, 20, 30, 40, 50]
 label_version = '1.2'               
-data_root = 'LIG-AMOD/'             # Important: should be ended with '/'
+data_root = '/home/flyingalien/Repositories/AMOD/data/'  # Important: should be ended with '/'
 modality = 'EO'                     # 'eo' or 'ir'
 img_extension = 'png'               # 'png' or 'jpg'
 num_classes = 20                    # >= 12
@@ -10,9 +10,9 @@ load_from = None
 resume_from = None
 img_norm_cfg = dict(mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 angle_version = 'le90'
-evaluation = dict(interval=1, metric='mAP', save_best='mAP')
+evaluation = dict(interval=5, metric='mAP', save_best='mAP')
 optimizer = dict(type='SGD', lr=0.005, momentum=0.9, weight_decay=0.0001)
-optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2), type='Fp16OptimizerHook', loss_scale='dynamic')
 lr_config = dict(
     policy='step',
     warmup='linear',
@@ -21,7 +21,7 @@ lr_config = dict(
     step=[16, 22]
 )
 runner = dict(type='EpochBasedRunner', max_epochs=30)
-checkpoint_config = dict(interval=-1) # save only when val mAP is best
+checkpoint_config = dict(interval=5)  # save every 5 epochs + best
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook'),
                                       dict(type='TensorboardLoggerHook')])
 dist_params = dict(backend='nccl')
@@ -68,17 +68,17 @@ test_pipeline = [
 train_label_prefix = f'train/train_labels_v{label_version}'
 test_label_prefix = f'test/test_labels_v{label_version}' 
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
-    train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train/train_imgs', angles=angles,
+    samples_per_gpu=4,
+    workers_per_gpu=4,
+    train=dict(type=dataset_type, data_root=data_root, ann_file='train.txt', img_prefix='train', angles=angles,
                pipeline=train_pipeline, version=angle_version, modality=modality,
-               ext=img_extension, label_prefix=train_label_prefix),
-    val=dict(type=dataset_type, data_root=data_root, ann_file='val.txt', img_prefix='train/train_imgs', angles=angles,
+               ext=img_extension, label_prefix=None),
+    val=dict(type=dataset_type, data_root=data_root, ann_file='val_mini.txt', img_prefix='train', angles=angles,
              pipeline=test_pipeline, version=angle_version, modality=modality,
-             ext=img_extension, label_prefix=train_label_prefix),
-    test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test/test_imgs', angles=angles,
+             ext=img_extension, label_prefix=None),
+    test=dict(type=dataset_type, data_root=data_root, ann_file='test.txt', img_prefix='test', angles=angles,
               pipeline=test_pipeline, version=angle_version, modality=modality,
-              ext=img_extension, label_prefix=test_label_prefix)
+              ext=img_extension, label_prefix=None)
 )
 
 
@@ -192,8 +192,8 @@ model = dict(
             debug=False
         ),
         rpn_proposal=dict(
-            nms_pre=2000,
-            max_per_img=2000,
+            nms_pre=1000,
+            max_per_img=1000,
             nms=dict(type='nms', iou_threshold=0.8),
             min_bbox_size=0
         ),
@@ -220,17 +220,17 @@ model = dict(
     ),
     test_cfg=dict(
         rpn=dict(
-            nms_pre=2000,
-            max_per_img=2000,
+            nms_pre=1000,
+            max_per_img=1000,
             nms=dict(type='nms', iou_threshold=0.8),
             min_bbox_size=0
         ),
         rcnn=dict(
-            nms_pre=2000,
+            nms_pre=1000,
             min_bbox_size=0,
             score_thr=0.05,
             nms=dict(iou_thr=0.1),
-            max_per_img=2000
+            max_per_img=200
         )
     )
 )

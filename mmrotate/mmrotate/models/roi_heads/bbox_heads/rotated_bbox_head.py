@@ -329,29 +329,25 @@ class RotatedBBoxHead(BaseModule):
             # 0~self.num_classes-1 are FG, self.num_classes is BG
             pos_inds = (labels >= 0) & (labels < bg_class_ind)
             # do not perform bounding box regression for BG anymore.
-            if pos_inds.any():
+            pos_idx = pos_inds.nonzero(as_tuple=False).squeeze(1)
+            if pos_idx.numel() > 0:
                 if self.reg_decoded_bbox:
-                    # When the regression loss (e.g. `IouLoss`,
-                    # `GIouLoss`, `DIouLoss`) is applied directly on
-                    # the decoded bounding boxes, it decodes the
-                    # already encoded coordinates to absolute format.
                     bbox_pred = self.bbox_coder.decode(rois[:, 1:], bbox_pred)
                 if self.reg_class_agnostic:
                     pos_bbox_pred = bbox_pred.view(
-                        bbox_pred.size(0), 5)[pos_inds.type(torch.bool)]
+                        bbox_pred.size(0), 5)[pos_idx]
                 else:
                     pos_bbox_pred = bbox_pred.view(
-                        bbox_pred.size(0), -1,
-                        5)[pos_inds.type(torch.bool),
-                           labels[pos_inds.type(torch.bool)]]
+                        bbox_pred.size(0), -1, 5)[pos_idx,
+                                                   labels[pos_idx]]
                 losses['loss_bbox'] = self.loss_bbox(
                     pos_bbox_pred,
-                    bbox_targets[pos_inds.type(torch.bool)],
-                    bbox_weights[pos_inds.type(torch.bool)],
+                    bbox_targets[pos_idx],
+                    bbox_weights[pos_idx],
                     avg_factor=bbox_targets.size(0),
                     reduction_override=reduction_override)
             else:
-                losses['loss_bbox'] = bbox_pred[pos_inds].sum()
+                losses['loss_bbox'] = bbox_pred.sum() * 0
         return losses
 
     @force_fp32(apply_to=('cls_score', 'bbox_pred'))

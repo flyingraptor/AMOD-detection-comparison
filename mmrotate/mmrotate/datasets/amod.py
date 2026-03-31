@@ -84,14 +84,14 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
         for sample_idx in sample_idx_list:
             for angle in self.angles:
                 try:
-                    # IMAGE
+                    # IMAGE — V1.0 layout: {img_prefix}/{scene}/{angle}/EO_{scene}_{angle}.{ext}
                     img_path = os.path.join(self.data_root, self.img_prefix, str(sample_idx),
-                                            f'{self.modality}_{sample_idx}_{angle}.{self.ext}')
+                                            str(angle), f'{self.modality}_{sample_idx}_{angle}.{self.ext}')
                     assert os.path.exists(img_path), f'{img_path} does not exist!'
 
-                    # LABEL
-                    label_path = os.path.join(self.data_root, self.label_prefix,
-                                              f'ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv')
+                    # LABEL — co-located with image in same angle subfolder
+                    label_path = os.path.join(self.data_root, self.img_prefix, str(sample_idx),
+                                              str(angle), f'ANNOTATION-{self.modality}_{sample_idx}_{angle}.csv')
                     assert os.path.exists(label_path), f'{label_path} does not exist!'
 
                     annot_df = pd.read_csv(label_path)
@@ -99,19 +99,20 @@ class AMODDataset(CustomDataset): # Add to __init__.py!
                         continue
 
                     polygons = annot_df[['x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'x4', 'y4']].values
+                    raw_labels = list(map(lambda label: self.cat2label.get(label, -1),
+                                         annot_df['main_class']))
                     obb_bboxes = []
-                    for polygon in polygons:
+                    labels_filtered = []
+                    for polygon, label in zip(polygons, raw_labels):
+                        if label == -1:
+                            continue
                         obb_bbox = poly2obb_np(polygon, self.version)
                         if obb_bbox is not None:
                             obb_bboxes.append(obb_bbox)
+                            labels_filtered.append(label)
 
-                    obb_bboxes = np.array(obb_bboxes, dtype=np.float32)
-                    labels = np.array(list(map(lambda label: self.cat2label.get(label, -1),
-                                               annot_df['main_class'])), dtype=np.int64)
-
-                    valid_labels_inds = labels != -1
-                    labels = labels[valid_labels_inds]
-                    obb_bboxes = obb_bboxes[valid_labels_inds]
+                    obb_bboxes = np.array(obb_bboxes, dtype=np.float32).reshape(-1, 5)
+                    labels = np.array(labels_filtered, dtype=np.int64)
 
                     data_info_list.append({
                         'filename': img_path,
