@@ -153,6 +153,31 @@ print(metrics)
 > ⚠️ The AMOD test split has **no ground truth annotations** (labels held out, competition style).
 > `val.txt` / `yolo_val.txt` (6,240 images) is the definitive evaluation set for both models.
 
+### YOLO26s-OBB — `yolo/train_yolo26_obb.py`
+
+| Parameter          | Value |
+|---|---|
+| Architecture       | YOLO26s-OBB (single-stage, NMS-free, dual-head OBB26) |
+| Backbone           | YOLO26s C3k2+SPPF+C2PSA pretrained on COCO |
+| Head               | `OBB26` — dedicated OBB head with specialized angle loss |
+| Parameters         | 10,529,510 (~10.5M) — model summary pre-fuse |
+| GFLOPs             | 24.5 — model summary at 1024px |
+| Ultralytics        | 8.4.33 |
+| Epochs             | 30 |
+| Batch size         | 4 |
+| Optimizer          | SGD lr=0.005, momentum=0.9, wd=0.0001 |
+| LR schedule        | Cosine annealing (lr0=0.005 → lrf=lr0×0.01=5e-5) |
+| AMP (fp16)         | Yes (auto) |
+| Image size         | 1024×1024 |
+| Warmup epochs      | 3.0 |
+| Rotation aug       | ±180° |
+| Flip aug           | ud=0.5, lr=0.5 |
+| Loss components    | box_loss, cls_loss, dfl_loss, **angle_loss** (new vs YOLO11s) |
+| Val set (training) | `data/yolo_val_mini.txt` — same 170 scenes as RCNN/YOLO11s mini-val |
+| Checkpoint         | Every 5 epochs + best/last always saved |
+
+> Training launched: ~epoch 1 in progress. ~5h expected (same as YOLO11s).
+
 ---
 
 ## Results Table
@@ -162,11 +187,13 @@ print(metrics)
 | Model | mAP@50 | mAP@50:95 | Precision | Recall | FPS | Train (h) | Params (M) | GFLOPs |
 |---|---|---|---|---|---|---|---|---|
 | OrientedRCNN + Swin-S | 0.8952 | — ¹ | — ¹ | — ¹ | — ¹ | ~28 | ~69 | ~190 |
-| **YOLO11s-OBB** | **0.9040** | **0.671** | **0.889** | **0.834** | **~256** (3.9ms) | **~5** | **9.7** | **22.3** |
+| YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 (3.9ms) | ~5 | 9.7 | 22.3 |
+| **YOLO26s-OBB** | **🔄 training** | — | — | — | — | ~5 | **10.5** | **24.5** |
 
 ¹ MMRotate evaluation reports mAP@50 only; FPS not benchmarked for RCNN.
 
-> ✅ **YOLO11s-OBB outperforms Oriented R-CNN by +0.009 mAP@50** on the full val set (6,240–6,246 images) while being 7× smaller and ~5× faster to train.
+> ✅ YOLO11s-OBB and Oriented R-CNN fully evaluated.
+> 🔄 YOLO26s-OBB training in progress — expected ~5h, same hyperparameters for fair comparison.
 
 ---
 
@@ -346,6 +373,7 @@ This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s
 |---|---|---|
 | OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | ~28h total, fp16, batch=4. |
 | YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | ~5h total, fp16, batch=4. |
+| YOLO26s-B | 🔄 **TRAINING** — epoch 1/30 | Ultralytics 8.4.33, same hyps as YOLO11s. |
 
 ---
 
