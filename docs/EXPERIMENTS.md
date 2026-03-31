@@ -112,94 +112,61 @@ tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
 
 ---
 
-## Metrics to Collect (per experiment)
+## Metrics Collected
 
-For each trained model, record the following. Use the **test split** for final numbers.
-
-### Accuracy
-| Metric | Description |
-|---|---|
-| `mAP@50` | IoU threshold 0.50 — main OBB metric |
-| `mAP@75` | IoU threshold 0.75 — stricter |
-| `mAP@50:95` | COCO-style average across thresholds |
-| `Recall@100` | Recall at max 100 detections per image |
-| Per-class AP | AP for each of the 12 classes |
-
-### Speed (measured on RTX 5090)
-| Metric | Description |
-|---|---|
-| `FPS` | Frames per second at inference (batch=1) |
-| `ms/image` | Latency per image |
-| Training time | Total wall-clock hours for 30 epochs |
-
-### Model
-| Metric | Description |
-|---|---|
-| Parameters (M) | Total trainable parameters |
-| GFLOPs | Compute cost per image |
-| Checkpoint size (MB) | Size of best.pt / best.pth |
+| Metric | Oriented R-CNN | YOLO11s-OBB | Notes |
+|---|---|---|---|
+| `mAP@50` | ✅ 0.8952 | ✅ 0.9040 | Primary metric |
+| `mAP@50:95` | — | ✅ 0.671 | MMRotate only reports mAP@50 |
+| Per-class AP@50 | ✅ (12 classes) | ✅ (12 classes) | See full val tables below |
+| Precision | — | ✅ 0.889 | Not reported by MMRotate |
+| Recall | — | ✅ 0.834 | Not reported by MMRotate |
+| FPS | — | ✅ ~256 (3.9ms) | RCNN not benchmarked |
+| Training time | ✅ ~28h | ✅ ~5h | Wall-clock, RTX 5090 |
+| Parameters (M) | ✅ ~69M | ✅ 9.7M | Architecture-level |
+| GFLOPs | ✅ ~190 | ✅ 22.3 | At model-summary resolution |
 
 ---
 
 ## Evaluation Commands
 
-### OrientedRCNN — evaluate on test set (AP50 + AP75 together)
+### OrientedRCNN — evaluate on full val set ✅ (used for paper)
 ```bash
-# Get AP50 and AP75
 python mmrotate/tools/test.py \
   "my_config/orientedrcnn_swinS_fpn_angle0,10,20,30,40,50_30epochs_le90_amod.py" \
-  work_dirs/orientedrcnn_swinS_baseline/best_bbox_mAP_epoch_*.pth \
-  --eval mAP --eval-options iou_thr=0.5,0.75 \
-  --out work_dirs/orientedrcnn_swinS_baseline/test_results.pkl
+  work_dirs/orientedrcnn_swinS_baseline/best_mAP_epoch_30.pth \
+  --eval mAP \
+  --cfg-options data.test.ann_file=val.txt data.test.img_prefix=train
 ```
 
-### OrientedRCNN — confusion matrix
-```bash
-mkdir -p work_dirs/orientedrcnn_swinS_baseline/confusion_matrix
-python mmrotate/tools/analysis_tools/confusion_matrix.py \
-  "my_config/orientedrcnn_swinS_fpn_angle0,10,20,30,40,50_30epochs_le90_amod.py" \
-  work_dirs/orientedrcnn_swinS_baseline/test_results.pkl \
-  work_dirs/orientedrcnn_swinS_baseline/confusion_matrix \
-  --color-theme viridis --show --tp-iou-thr 0.5
-```
+> ⚠️ Must override both `ann_file` and `img_prefix` — validation images live under `data/train/`, not `data/test/`.
+> Output saved to: `work_dirs/orientedrcnn_swinS_baseline/full_val_results.log`
 
-### YOLO11s — evaluate on full val set (use this — test labels are not released)
+### YOLO11s — evaluate on full val set ✅ (used for paper)
 ```python
 from ultralytics import YOLO
-model = YOLO("work_dirs/yolo26_obb_baseline/train/weights/best.pt")
-# Temporarily set val: yolo_val.txt in amod_yolo.yaml first
-metrics = model.val(data="yolo/amod_yolo.yaml", split="val", task="obb", imgsz=1024, batch=8)
+model = YOLO("runs/yolo_obb/yolo11s_baseline/weights/best.pt")
+metrics = model.val(data="yolo/amod_yolo.yaml", split="val", imgsz=1024, batch=4)
 print(metrics)
 ```
 
 > ⚠️ The AMOD test split has **no ground truth annotations** (labels held out, competition style).
-> Use `val.txt` / `yolo_val.txt` (6,240 images) as the definitive evaluation set.
-
-### YOLO11s — measure FPS
-```python
-import time, torch
-from ultralytics import YOLO
-model = YOLO("work_dirs/yolo26_obb_baseline/train/weights/best.pt")
-# warmup
-for _ in range(10): model("data/test/5206/30/EO_5206_30.png")
-# benchmark
-t0 = time.time()
-for _ in range(100): model("data/test/5206/30/EO_5206_30.png")
-print(f"{100/(time.time()-t0):.1f} FPS")
-```
+> `val.txt` / `yolo_val.txt` (6,240 images) is the definitive evaluation set for both models.
 
 ---
 
 ## Results Table
 
-### Baseline (30 epochs, batch=4, imgsz=1024)
+### Baseline (30 epochs, batch=4, imgsz=1024) ✅ FINAL
 
-| Model | mAP@50 | mAP@75 | mAP@50:95 | Precision | Recall | FPS | Train time | Params (M) | GFLOPs |
-|---|---|---|---|---|---|---|---|---|---|
-| OrientedRCNN + Swin-S | 0.8952 ✅ (full val, 6,246 img) | — (not reported) | — | — | _TBD_ | ~28h | ~69M | ~190 |
-| YOLO11s-OBB | **0.9040** ✅ (full val, 6,240 img) | **0.671** | 0.889 | 0.834 | ~256 FPS (3.9ms) | **~5h** | **9.7M** | **22.3** |
+| Model | mAP@50 | mAP@50:95 | Precision | Recall | FPS | Train (h) | Params (M) | GFLOPs |
+|---|---|---|---|---|---|---|---|---|
+| OrientedRCNN + Swin-S | 0.8952 | — ¹ | — ¹ | — ¹ | — ¹ | ~28 | ~69 | ~190 |
+| **YOLO11s-OBB** | **0.9040** | **0.671** | **0.889** | **0.834** | **~256** (3.9ms) | **~5** | **9.7** | **22.3** |
 
-> ✅ Both models fully evaluated. **YOLO11s-OBB outperforms Oriented R-CNN by +0.009 mAP@50** while being 7× smaller and ~5× faster to train.
+¹ MMRotate evaluation reports mAP@50 only; FPS not benchmarked for RCNN.
+
+> ✅ **YOLO11s-OBB outperforms Oriented R-CNN by +0.009 mAP@50** on the full val set (6,240–6,246 images) while being 7× smaller and ~5× faster to train.
 
 ---
 
@@ -377,8 +344,8 @@ This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s
 
 | Run | Status | Notes |
 |---|---|---|
-| OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.9110** (ep30, mini-val) | ~28h total, fp16, batch=4. Full eval pending. |
-| YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9010** (ep30, mini-val) | ~5h total, fp16, batch=4. Full eval pending. |
+| OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | ~28h total, fp16, batch=4. |
+| YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | ~5h total, fp16, batch=4. |
 
 ---
 
