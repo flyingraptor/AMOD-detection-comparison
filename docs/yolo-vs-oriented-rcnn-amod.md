@@ -8,7 +8,6 @@ tags: ["ai", "engineering"]
 ---
 
 ![AMOD example scene](/docs/figures/fig_header.png)
-*Aerial view from an ArmA 3 simulation scene with oriented bounding box annotations. Orange: Tank. Yellow: Support vehicles. Gray: civilian vehicles (excluded from the 12 training classes). The image shows what AMOD looks like: photorealistic game-engine rendering at 1920x1440 px, viewed at 0 degrees (directly overhead).*
 
 ---
 
