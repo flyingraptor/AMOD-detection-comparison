@@ -100,23 +100,24 @@ Training setup:
 
 ### YOLO11s-OBB
 
-A single-stage, anchor-free detector. It predicts oriented boxes directly from feature maps in one forward pass, no region proposals needed. The architecture uses C3k2 blocks for the backbone and a C2PSA neck for spatial attention. YOLO11 still uses NMS at inference. End-to-end NMS-free inference came in the next generation.
+A single-stage, anchor-free detector. It predicts oriented boxes directly from feature maps in one forward pass, no region proposals needed. The architecture uses C3k2 blocks for the backbone and a C2PSA neck for spatial attention. YOLO11 still requires NMS as a post-processing step at inference. End-to-end NMS-free inference was pioneered earlier in YOLOv10 and is central to YOLO26's design, but YOLO11 does not include it.
 
 ![YOLO11s-OBB pipeline](/docs/figures/fig_yolo_pipeline.png)
 
-Key numbers: 9.7M parameters and 22.3 GFLOPs at 640px (roughly 57 GFLOPs at the 1024px resolution used here). That is about 7x fewer parameters and 8x fewer GFLOPs than Oriented R-CNN.
+Key numbers: 9.7M parameters and 57.1 GFLOPs at the 1024px resolution used here (22.3 GFLOPs at the standard 640px benchmark resolution). That is about 7x fewer parameters than Oriented R-CNN.
 
 Training setup was matched to Oriented R-CNN where possible: 30 epochs, batch size 4, 1024px images, same optimizer and initial learning rate, same augmentation (rotation and flips), same validation scenes for intermediate evaluation.
 
 ### YOLO26s-OBB
 
-The second-generation single-stage model. YOLO26 was released in January 2026, roughly three months before this experiment, so it is about as fresh as it gets. It introduces three changes directly relevant to oriented detection:
+The latest model in the YOLO family at the time of this experiment. YOLO26 was released on January 14, 2026, roughly three months before this experiment. It follows YOLO12 in the Ultralytics lineage and introduces several architectural changes, four of which are directly relevant to oriented detection:
 
-- **Dedicated angle loss:** an explicit `angle_loss` term in the training objective, designed to fix the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
-- **`OBB26` head:** a new dedicated OBB detection head with refined angle decoding.
-- **End-to-end NMS-free inference:** predictions produced directly without a post-processing NMS step.
+- **DFL removal:** Distribution Focal Loss, present in YOLO11 and earlier, is dropped entirely. This simplifies the inference graph and broadens hardware compatibility, particularly for edge and CPU deployments.
+- **End-to-end NMS-free inference:** predictions produced directly via a one-to-one head, no post-processing NMS step required.
+- **Dedicated angle loss:** an explicit `angle_loss` term in the training objective, designed to resolve the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
+- **Refined OBB decoding:** optimized decoding in the OBB head paired with the angle loss.
 
-Model stats: 10.5M parameters, 24.5 GFLOPs (model summary at 1024px), marginally larger than YOLO11s but in the same weight class. Epochs, batch size, optimizer, learning rate, and augmentation were all kept identical to YOLO11s for a direct comparison.
+Model stats: 10.5M parameters, 55.1 GFLOPs at 1024px (post-fuse, from Ultralytics docs); the pre-fuse model summary reports 24.5 GFLOPs. Marginally larger than YOLO11s but in the same weight class. Epochs, batch size, optimizer, learning rate, and augmentation were all kept identical to YOLO11s for a direct comparison. We used standard SGD rather than YOLO26's native MuSGD optimizer to keep the training conditions matched.
 
 ![YOLO model comparison](/docs/figures/fig_yolo_comparison.png)
 *Ultralytics YOLO model family comparison (source: Ultralytics documentation). YOLO11s and YOLO26s sit at essentially the same accuracy-latency operating point at the small-model scale.*
@@ -135,13 +136,13 @@ A quick note on the metrics before the numbers. **mAP** (mean Average Precision)
 | YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 | 5 | 9.7 | 22.3 |
 | **YOLO26s-OBB** | **0.934** | **0.714** | **0.920** | **0.868** | **~400** | **~5** | **10.5** | **24.5** |
 
-MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and recall are not available for Oriented R-CNN. Inference speed was not benchmarked for R-CNN. YOLO FPS figures come from the Ultralytics `.val()` run on an RTX 5090 24 GB, Intel Core Ultra 9 275HX (24 cores), 64 GB RAM, Linux: 3.9 ms per image for YOLO11s (~256 FPS), 2.5 ms per image for YOLO26s (~400 FPS).
+MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and recall are not available for Oriented R-CNN. Inference speed was not benchmarked for R-CNN. YOLO FPS figures come from the Ultralytics `.val()` run on an RTX 5090 24 GB, Intel Core Ultra 9 275HX (24 cores), 64 GB RAM, Linux: 3.9 ms per image for YOLO11s (~256 FPS), 2.5 ms per image for YOLO26s (~400 FPS). GFLOPs for YOLO11s is the pre-fuse model summary at 640px (57.1 at 1024px per Ultralytics docs); GFLOPs for YOLO26s is the pre-fuse model summary at 1024px (55.1 post-fuse at 1024px per Ultralytics docs).
 
 ![Training loss curves](/docs/figures/fig_loss_curves.png)
-*Training loss curves for both models over 30 epochs.*
+*Training loss curves for all three models over 30 epochs.*
 
 ![Validation mAP per epoch](/docs/figures/fig_map_curves.png)
-*Validation mAP@50 per epoch. Both models converge, but YOLO reaches its peak faster.*
+*Validation mAP@50 per epoch. All three models converge, but both YOLO variants reach their peak faster than R-CNN.*
 
 ### Per-class AP
 
@@ -164,7 +165,7 @@ The headline number hides more than it reveals. Here is the full breakdown:
 | **mAP@50** | 0.8952 | 0.9040 | **0.934** | +0.009 | **+0.030** |
 
 ![Per-class AP](/docs/figures/fig_per_class_ap.png)
-*Per-class AP@50 for both models. The gap on Helicopter and Self-propelled Artillery stands out.*
+*Per-class AP@50 for all three models. The gap on Helicopter and Self-propelled Artillery stands out.*
 
 YOLO11s wins on 8 of 12 classes against R-CNN. The biggest advantages are on Helicopter (+0.172), Plane (+0.086), and LCU (+0.074). These are classes with distinctive, rigid silhouettes. An anchor-free head with rotation augmentation handles those shapes well.
 
