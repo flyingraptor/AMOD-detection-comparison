@@ -31,8 +31,8 @@ FIGURES  = Path("docs/figures")
 FIGURES.mkdir(exist_ok=True)
 
 RCNN_LOG   = "work_dirs/orientedrcnn_swinS_baseline/tf_logs"
-YOLO11_LOG = "runs/yolo_obb/yolo11s_baseline/train"
-YOLO11_CSV = "runs/yolo_obb/yolo11s_baseline/train/results.csv"
+YOLO11_LOG = "work_dirs/yolo26_obb_baseline/train"
+YOLO11_CSV = "work_dirs/yolo26_obb_baseline/train/results.csv"
 YOLO26_LOG = "runs/yolo_obb/yolo26s_baseline/train"
 YOLO26_CSV = "runs/yolo_obb/yolo26s_baseline/train/results.csv"
 
@@ -57,9 +57,9 @@ def load_tb(logdir, scalar_key):
     return [e.step for e in events], [e.value for e in events]
 
 
-def load_yolo_csv(col):
+def load_yolo_csv(col, csv_path=None):
     """Load a column from YOLO results.csv. Returns (epochs, values)."""
-    p = Path(YOLO_CSV)
+    p = Path(csv_path or YOLO_CSV)
     if not p.exists():
         return [], []
     rows = []
@@ -75,11 +75,19 @@ def load_yolo_csv(col):
 
 
 def yolo_series(tb_key, csv_col):
-    """Try TensorBoard first, fall back to CSV for YOLO data."""
-    steps, vals = load_tb(YOLO_LOG, tb_key)
+    """Try TensorBoard first, fall back to CSV for YOLO11s data."""
+    steps, vals = load_tb(YOLO11_LOG, tb_key)
     if steps:
         return steps, vals
-    return load_yolo_csv(csv_col)
+    return load_yolo_csv(csv_col, YOLO11_CSV)
+
+
+def yolo26_series(tb_key, csv_col):
+    """Try TensorBoard first, fall back to CSV for YOLO26s data."""
+    steps, vals = load_tb(YOLO26_LOG, tb_key)
+    if steps:
+        return steps, vals
+    return load_yolo_csv(csv_col, YOLO26_CSV)
 
 
 def smooth(vals, weight=0.85):
@@ -93,8 +101,40 @@ def smooth(vals, weight=0.85):
 
 # ── Fig 1: Training loss curves ───────────────────────────────────────────────
 
+def _plot_yolo_loss_panel(ax, series_fn, title):
+    """Shared helper: plot YOLO loss components on a given axes."""
+    comp_keys = [
+        ("train/box_loss",   "train/box_loss",   "Box loss",   "steelblue"),
+        ("train/cls_loss",   "train/cls_loss",   "Cls loss",   "darkorange"),
+        ("train/dfl_loss",   "train/dfl_loss",   "DFL loss",   "seagreen"),
+        ("train/angle_loss", "train/angle_loss", "Angle loss", "orchid"),
+    ]
+    all_epochs, all_arrs = None, []
+    for tb_key, csv_col, label, color in comp_keys:
+        epochs, vals = series_fn(tb_key, csv_col)
+        if not epochs:
+            continue
+        all_epochs = epochs
+        all_arrs.append(np.array(vals))
+        ax.plot(epochs, vals, alpha=0.25, color=color, linewidth=0.7)
+        ax.plot(epochs, smooth(vals), color=color, linewidth=1.2,
+                linestyle="--", label=label)
+    if all_epochs is not None and len(all_arrs) == 4:
+        total = sum(all_arrs)
+        ax.plot(all_epochs, total, alpha=0.25, color="black", linewidth=0.7)
+        ax.plot(all_epochs, smooth(list(total)), color="black",
+                linewidth=2.0, label="Total loss")
+    if all_epochs is None:
+        ax.text(0.5, 0.5, "No data yet", ha="center", va="center",
+                transform=ax.transAxes, color="gray")
+    ax.set_title(title)
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.legend(fontsize=8)
+
+
 def plot_loss_curves():
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5), sharey=False)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 4.5), sharey=False)
 
     # --- RCNN (total loss from TensorBoard) ---
     ax = axes[0]
@@ -113,38 +153,10 @@ def plot_loss_curves():
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(
         lambda x, _: f"{int(x/1000)}k" if x >= 1000 else str(int(x))))
 
-    # --- YOLO (total loss + individual components from TB or CSV) ---
-    ax = axes[1]
-    comp_keys = [
-        ("train/box_loss",   "train/box_loss",   "Box loss",   "steelblue"),
-        ("train/cls_loss",   "train/cls_loss",   "Cls loss",   "darkorange"),
-        ("train/dfl_loss",   "train/dfl_loss",   "DFL loss",   "seagreen"),
-        ("train/angle_loss", "train/angle_loss", "Angle loss", "orchid"),
-    ]
-    all_epochs, all_arrs = None, []
-    for tb_key, csv_col, label, color in comp_keys:
-        epochs, vals = yolo_series(tb_key, csv_col)
-        if not epochs:
-            continue
-        all_epochs = epochs
-        all_arrs.append(np.array(vals))
-        ax.plot(epochs, vals, alpha=0.25, color=color, linewidth=0.7)
-        ax.plot(epochs, smooth(vals), color=color, linewidth=1.2,
-                linestyle="--", label=label)
-
-    if all_epochs is not None and len(all_arrs) == 4:
-        total = sum(all_arrs)
-        ax.plot(all_epochs, total, alpha=0.25, color="black", linewidth=0.7)
-        ax.plot(all_epochs, smooth(list(total)), color="black",
-                linewidth=2.0, label="Total loss")
-
-    if all_epochs is None:
-        ax.text(0.5, 0.5, "No data yet", ha="center", va="center",
-                transform=ax.transAxes, color="gray")
-    ax.set_title("YOLO11s-OBB")
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax.legend()
+    # --- YOLO11s ---
+    _plot_yolo_loss_panel(axes[1], yolo_series,  "YOLO11s-OBB")
+    # --- YOLO26s ---
+    _plot_yolo_loss_panel(axes[2], yolo26_series, "YOLO26s-OBB")
 
     fig.suptitle("Training Loss Curves", fontweight="bold")
     fig.tight_layout()
@@ -158,7 +170,7 @@ def plot_loss_curves():
 RCNN_STEPS_PER_EPOCH = 6062   # 24,248 images / batch 4
 
 def plot_map_curves():
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
 
     # RCNN — convert steps → epochs
     steps, vals = load_tb(RCNN_LOG, "val/mAP")
@@ -167,11 +179,17 @@ def plot_map_curves():
         ax.plot(epochs, vals, "o-", color="steelblue", linewidth=1.8,
                 markersize=5, label="Oriented R-CNN + Swin-S")
 
-    # YOLO — already in epochs
+    # YOLO11s — already in epochs
     steps, vals = yolo_series("metrics/mAP50(B)", "metrics/mAP50(B)")
     if steps:
         ax.plot(steps, vals, "s-", color="darkorange", linewidth=1.8,
                 markersize=5, label="YOLO11s-OBB")
+
+    # YOLO26s — already in epochs
+    steps, vals = yolo26_series("metrics/mAP50(B)", "metrics/mAP50(B)")
+    if steps:
+        ax.plot(steps, vals, "^-", color="seagreen", linewidth=1.8,
+                markersize=5, label="YOLO26s-OBB")
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("mAP@50")
@@ -187,20 +205,27 @@ def plot_map_curves():
 # ── Fig 3: mAP50-95 per epoch — both models ───────────────────────────────────
 
 def plot_map5095_curves():
-    fig, ax = plt.subplots(figsize=(8, 4.5))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
 
-    # YOLO only (RCNN doesn't log mAP50-95 during training)
+    # YOLO11s (RCNN doesn't log mAP50-95 during training)
     steps, vals = yolo_series("metrics/mAP50-95(B)", "metrics/mAP50-95(B)")
     if steps:
         ax.plot(steps, vals, "s-", color="darkorange", linewidth=1.8,
                 markersize=5, label="YOLO11s-OBB")
-    else:
+
+    # YOLO26s
+    steps, vals = yolo26_series("metrics/mAP50-95(B)", "metrics/mAP50-95(B)")
+    if steps:
+        ax.plot(steps, vals, "^-", color="seagreen", linewidth=1.8,
+                markersize=5, label="YOLO26s-OBB")
+
+    if not ax.lines:
         ax.text(0.5, 0.5, "No data yet", ha="center", va="center",
                 transform=ax.transAxes, color="gray")
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("mAP@50:95")
-    ax.set_title("Validation mAP@50:95 per Epoch — YOLO11s-OBB")
+    ax.set_title("Validation mAP@50:95 per Epoch — YOLO Models")
     ax.legend()
     ax.grid(True, linestyle="--", alpha=0.4)
     fig.tight_layout()
@@ -358,7 +383,7 @@ def plot_pareto():
         ("YOLO11s-OBB",                  0.9040,  256),
         ("YOLO26s-OBB",                  0.934,   400),
     ]
-    ready = [(l, m, f) for l, m, f in results if m is not None]
+    ready = [(l, m, f) for l, m, f in results if m is not None and f is not None]
     if not ready:
         print("  [skip] Pareto plot: fill in mAP and FPS values above.")
         return
