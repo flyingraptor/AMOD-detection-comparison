@@ -32,7 +32,7 @@ This is a comparative study of two oriented object detection paradigms on the **
 | **YOLO11s-OBB** | Single-stage, anchor-free | **0.9040** | 9.7M | ~5h |
 | Oriented R-CNN + Swin-S | Two-stage, proposal-based | 0.8952 | ~69M | ~28h |
 
-> Full results, per-class breakdown, and analysis: [`docs/ARTICLE.md`](docs/ARTICLE.md)
+> Full results, per-class breakdown, and analysis: [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md)
 
 ---
 
@@ -45,7 +45,6 @@ AMOD/
 ├── yolo/               # YOLO11s-OBB training script + dataset YAML
 ├── data/               # Split index files (*.txt) — images re-downloaded separately
 ├── docs/
-│   ├── ARTICLE.md      # Full paper draft with results and discussion
 │   ├── EXPERIMENTS.md  # Experiment tracker: configs, commands, raw numbers
 │   ├── plot_results.py # Generates all publication figures from training logs
 │   └── figures/        # Publication-ready PNG figures (11 total)
@@ -147,8 +146,7 @@ m.val(data='yolo/amod_yolo.yaml', imgsz=1024, batch=4, split='val')
 
 ## Results
 
-See [`docs/ARTICLE.md §5`](docs/ARTICLE.md) for the full comparison table and per-class AP breakdown.
-See [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md) for raw numbers, training logs, and all commands used.
+See [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md) for the full comparison table, per-class AP breakdown, raw numbers, training logs, and all commands used.
 
 Figures are in [`docs/figures/`](docs/figures/) and can be regenerated with:
 
