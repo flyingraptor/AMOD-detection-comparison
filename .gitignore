@@ -246,6 +246,7 @@ fabric.properties
 
 # Paper draft — kept local, published separately
 docs/ARTICLE.md
+docs/yolo-vs-oriented-rcnn-amod.md
 
 # Dataset images and labels (re-download from HuggingFace: unique-chan/AMOD-V1.0)
 # Exclude all scene subdirectories (images + per-image YOLO labels + cache)
