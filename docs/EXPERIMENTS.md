@@ -1,7 +1,7 @@
 # AMOD Experiment Tracker
 
 ## Project Goal
-Compare **OrientedRCNN + SwinTransformer-S** (two-stage) vs **YOLO11s-OBB** (single-stage)
+Compare **OrientedRCNN + SwinTransformer-S** (two-stage), **YOLO11s-OBB**, and **YOLO26s-OBB** (both single-stage)
 on the AMOD dataset (synthetic aerial imagery with oriented bounding boxes).
 
 Produce a full comparison across: accuracy, speed, recall, and training cost.
@@ -18,7 +18,7 @@ source venv/bin/activate          # PyTorch 2.11.0+cu130, CUDA 13.0, RTX 5090 (s
 | Package      | Version  |
 |---|---|
 | PyTorch      | 2.11.0+cu130 |
-| ultralytics  | 8.4.31 (YOLO11s-OBB used; no YOLO26 release existed at time of experiment) |
+| ultralytics  | 8.4.31 (YOLO11s-OBB) / 8.4.33 (YOLO26s-OBB) |
 | mmcv-full    | 1.7.2 (built from source at `/tmp/mmcv-1.7.2`) |
 | mmdetection  | 2.28.2 |
 | mmrotate     | 0.3.4 |
@@ -53,16 +53,26 @@ python mmrotate/tools/train.py \
 
 ### YOLO11s-OBB (Baseline)
 ```bash
-python yolo/train_yolo26_obb.py \
+python yolo/train_yolo11_obb.py \
   --model yolo11s-obb \
   --epochs 30 \
   --batch 4 \
   --imgsz 1024
 ```
 
-### TensorBoard (monitor both)
+### YOLO26s-OBB (Baseline)
 ```bash
-tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
+python yolo/train_yolo26_obb.py \
+  --model yolo26s-obb \
+  --epochs 30 \
+  --batch 4 \
+  --imgsz 1024
+```
+
+### TensorBoard (monitor all runs)
+```bash
+tensorboard --logdir work_dirs/    # RCNN + YOLO11s
+tensorboard --logdir runs/         # YOLO26s
 ```
 
 ---
@@ -90,11 +100,11 @@ tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
 | Val set (training) | `data/val_mini.txt` — 170 randomly sampled scenes (seed=42), ~1,020 images |
 | Val set (final)    | `data/val.txt` — full 1,041 scenes, ~6,246 images (run manually after training) |
 
-### YOLO11s-OBB — `yolo/train_yolo26_obb.py`
+### YOLO11s-OBB — `yolo/train_yolo11_obb.py`
 
 | Parameter          | Value |
 |---|---|
-| Architecture       | YOLO11s-OBB (single-stage, anchor-free, NMS-free) |
+| Architecture       | YOLO11s-OBB (single-stage, anchor-free, NMS-required) |
 | Backbone           | YOLO11s pretrained on COCO |
 | Parameters         | 9.7M (9,703,431) |
 | GFLOPs             | 22.3 |
@@ -130,7 +140,7 @@ tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
 
 ## Evaluation Commands
 
-### OrientedRCNN — evaluate on full val set ✅ (used for paper)
+### OrientedRCNN — evaluate on full val set ✅ (final numbers)
 ```bash
 python mmrotate/tools/test.py \
   "my_config/orientedrcnn_swinS_fpn_angle0,10,20,30,40,50_30epochs_le90_amod.py" \
@@ -142,16 +152,28 @@ python mmrotate/tools/test.py \
 > ⚠️ Must override both `ann_file` and `img_prefix` — validation images live under `data/train/`, not `data/test/`.
 > Output saved to: `work_dirs/orientedrcnn_swinS_baseline/full_val_results.log`
 
-### YOLO11s — evaluate on full val set ✅ (used for paper)
+### YOLO11s — evaluate on full val set ✅ (final numbers)
 ```python
 from ultralytics import YOLO
-model = YOLO("runs/yolo_obb/yolo11s_baseline/weights/best.pt")
+model = YOLO("work_dirs/yolo26_obb_baseline/train/weights/best.pt")
 metrics = model.val(data="yolo/amod_yolo.yaml", split="val", imgsz=1024, batch=4)
 print(metrics)
 ```
 
 > ⚠️ The AMOD test split has **no ground truth annotations** (labels held out, competition style).
 > `val.txt` / `yolo_val.txt` (6,240 images) is the definitive evaluation set for both models.
+
+### YOLO26s — evaluate on full val set
+```python
+from ultralytics import YOLO
+model = YOLO("runs/yolo_obb/yolo26s_baseline/train/weights/best.pt")
+metrics = model.val(data="yolo/amod_yolo.yaml", split="val", imgsz=1024, batch=4, task="obb")
+print(metrics)
+```
+
+> ⚠️ The results reported in the study (mAP@50=0.934) are from the **mini-val** (1,020 images) logged at end of training. Run the command above for full val consistency with RCNN and YOLO11s numbers.
+
+---
 
 ### YOLO26s-OBB — `yolo/train_yolo26_obb.py`
 
@@ -172,7 +194,7 @@ print(metrics)
 | Warmup epochs      | 3.0 |
 | Rotation aug       | ±180° |
 | Flip aug           | ud=0.5, lr=0.5 |
-| Loss components    | box_loss, cls_loss, dfl_loss, **angle_loss** (new vs YOLO11s) |
+| Loss components    | box_loss, cls_loss, **angle_loss** — no DFL (removed in YOLO26) |
 | Val set (training) | `data/yolo_val_mini.txt` — same 170 scenes as RCNN/YOLO11s mini-val |
 | Checkpoint         | Every 5 epochs + best/last always saved |
 
@@ -362,7 +384,7 @@ print(metrics)
 
 ## Scope
 
-This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s-OBB). Ablation experiments and per-angle breakdowns were considered but dropped to keep the paper focused. They remain as future work.
+This study covers a **three-model comparison**: Oriented R-CNN, YOLO11s-OBB, and YOLO26s-OBB. Ablation experiments and per-angle breakdowns were considered but dropped to keep the study focused. They remain as future work.
 
 ---
 
@@ -372,7 +394,7 @@ This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s
 |---|---|---|
 | OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | **28h** wall-clock, fp16, batch=4. |
 | YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | **5h** wall-clock, fp16, batch=4. |
-| YOLO26s-B | ✅ **COMPLETE** — mAP@50: **0.934** (full val, 1,020 img) | **~5h** wall-clock, fp16, batch=4. P=0.920, R=0.868, mAP50:95=0.714, FPS~400 (2.5ms). |
+| YOLO26s-B | ✅ **COMPLETE** — mAP@50: **0.934** (mini-val, 1,020 img) ⚠️ full val not yet run | **~5h** wall-clock, fp16, batch=4. P=0.920, R=0.868, mAP50:95=0.714, FPS~400 (2.5ms). |
 
 ---
 
