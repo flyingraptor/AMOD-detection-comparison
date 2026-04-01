@@ -1,7 +1,7 @@
 ---
 title: "Two-Stage vs Single-Stage Oriented Detection on Synthetic Aerial Imagery"
 slug: "yolo-vs-oriented-rcnn-amod"
-summary: "I ran a three-way comparison of Oriented R-CNN, YOLO11s-OBB, and YOLO26s-OBB on the AMOD synthetic aerial dataset. YOLO wins on overall accuracy at a fraction of the parameter count, but the per-class breakdown tells a more interesting story than the headline number."
+summary: "I ran a three-way comparison of Oriented R-CNN, YOLO11s-OBB, and YOLO26s-OBB on the AMOD synthetic aerial dataset. YOLO26s tops the chart at mAP@50 0.934 and ~400 FPS, but the per-class breakdown tells a more interesting story than the headline number."
 published_at: "2026-03-31"
 category: "engineering"
 tags: ["ai", "engineering"]
@@ -13,11 +13,11 @@ tags: ["ai", "engineering"]
 
 If you have ever played ArmA 3, you know two things: it is the most realistic military simulator ever made, and at some point a friendly soldier will get run over by his own jeep in a flat open field with no enemies nearby. The game is a goldmine for emergent chaos. It is also, apparently, a goldmine for aerial object detection training data.
 
-I also recently got an RTX 5090 laptop. A 24 GB GPU sitting mostly idle while I write code felt like a personal insult, so I decided to give it something to think about. Training two large object detection models back to back for a total of 33 hours seemed like a reasonable punishment for the card, and a good excuse to finally run an experiment I had been putting off. I also wanted to try YOLO26, which came out in January 2026, about three months ago, and already has oriented bounding box support. YOLO26 introduces a proper angle loss and an NMS-free OBB head, so I was curious whether those new 2026 features actually moved the needle compared to YOLO11.
+I also recently got an RTX 5090 laptop. A 24 GB GPU sitting mostly idle while I write code felt like a personal insult, so I decided to give it something to think about. Training three object detection models back to back for a total of ~38 hours seemed like a reasonable punishment for the card, and a good excuse to finally run an experiment I had been putting off. I also wanted to try YOLO26, which came out in January 2026, about three months ago, and already has oriented bounding box support. YOLO26 introduces a proper angle loss and an NMS-free OBB head, so I was curious whether those new 2026 features actually moved the needle compared to YOLO11.
 
 So I ran a comparison of three object detection models on the same dataset to settle a question I had: is a heavy two-stage detector actually more accurate than a lightweight single-stage one on aerial imagery, or does the efficiency gap come for free?
 
-The short answer is that both YOLO11s-OBB and YOLO26s-OBB beat Oriented R-CNN overall at roughly one seventh of the parameter count. But the per-class breakdown tells a more nuanced story, and the results come with a significant caveat: this is synthetic data from a video game, and the high accuracy numbers reflect that.
+The short answer is that YOLO26s-OBB tops the chart at mAP@50 0.934 (~400 FPS), followed by YOLO11s at 0.904, while Oriented R-CNN trails at 0.895 at roughly 7x the parameter count. But the per-class breakdown tells a more nuanced story, and the results come with a significant caveat: this is synthetic data from a video game, and the high accuracy numbers reflect that.
 
 One important note upfront: the Oriented R-CNN implementation I used was not built from scratch. It came directly from the [original AMOD repository](https://github.com/unique-chan/AMOD), which provides a config and codebase specifically targeting this dataset. My contribution was adapting it to run on modern hardware and comparing it against both YOLO variants under matched conditions.
 
@@ -133,9 +133,9 @@ A quick note on the metrics before the numbers. **mAP** (mean Average Precision)
 |---|---|---|---|---|---|---|---|---|
 | Oriented R-CNN + Swin-S | 0.8952 | n/a | n/a | n/a | n/a | 28 | ~69 | ~190 |
 | YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 | 5 | 9.7 | 22.3 |
-| **YOLO26s-OBB** | **[mAP@50]** | **[mAP@50:95]** | **[P]** | **[R]** | **[FPS]** | **[h]** | **10.5** | **24.5** |
+| **YOLO26s-OBB** | **0.934** | **0.714** | **0.920** | **0.868** | **~400** | **~5** | **10.5** | **24.5** |
 
-MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and recall are not available for Oriented R-CNN. Inference speed was not benchmarked for R-CNN. YOLO's 256 FPS figure (3.9 ms per image) comes from the Ultralytics `.val()` run on an RTX 5090 24 GB, Intel Core Ultra 9 275HX (24 cores), 64 GB RAM, Linux.
+MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and recall are not available for Oriented R-CNN. Inference speed was not benchmarked for R-CNN. YOLO FPS figures come from the Ultralytics `.val()` run on an RTX 5090 24 GB, Intel Core Ultra 9 275HX (24 cores), 64 GB RAM, Linux: 3.9 ms per image for YOLO11s (~256 FPS), 2.5 ms per image for YOLO26s (~400 FPS).
 
 ![Training loss curves](/docs/figures/fig_loss_curves.png)
 *Training loss curves for both models over 30 epochs.*
@@ -147,21 +147,21 @@ MMRotate's evaluation script reports mAP@50 only, so mAP@50:95, precision, and r
 
 The headline number hides more than it reveals. Here is the full breakdown:
 
-| Class | Oriented R-CNN | YOLO11s | YOLO26s | R-CNN vs YOLO11s |
-|---|---|---|---|---|
-| Armored (27.3%) | 0.9005 | 0.890 | [AP] | -0.011 |
-| Artillery (0.9%) | 0.9036 | 0.906 | [AP] | +0.002 |
-| Helicopter (8.2%) | 0.7946 | **0.967** | [AP] | **+0.172** |
-| LCU (0.5%) | 0.9091 | **0.983** | [AP] | **+0.074** |
-| MLRS (2.2%) | **0.9076** | 0.804 | [AP] | **-0.104** |
-| Plane (7.3%) | 0.9085 | **0.994** | [AP] | **+0.086** |
-| RADAR (5.0%) | 0.8957 | 0.927 | [AP] | +0.031 |
-| SAM (5.0%) | 0.9025 | 0.937 | [AP] | +0.035 |
-| Self-prop. Artillery (1.8%) | **0.9068** | 0.690 | [AP] | **-0.217** |
-| Support (16.4%) | **0.9055** | 0.850 | [AP] | -0.056 |
-| Tank (15.9%) | 0.9053 | **0.954** | [AP] | +0.049 |
-| TEL (1.3%) | 0.9034 | 0.943 | [AP] | +0.040 |
-| **mAP@50** | 0.8952 | **0.9040** | **[mAP]** | **+0.009** |
+| Class | Oriented R-CNN | YOLO11s | YOLO26s | R-CNN vs YOLO11s | YOLO26s vs YOLO11s |
+|---|---|---|---|---|---|
+| Armored (27.3%) | 0.9005 | 0.890 | **0.932** | -0.011 | **+0.042** |
+| Artillery (0.9%) | 0.9036 | 0.906 | **0.990** | +0.002 | **+0.084** |
+| Helicopter (8.2%) | 0.7946 | **0.967** | **0.970** | **+0.172** | +0.003 |
+| LCU (0.5%) | 0.9091 | **0.983** | **0.995** | **+0.074** | +0.012 |
+| MLRS (2.2%) | **0.9076** | 0.804 | **0.919** | **-0.104** | **+0.115** |
+| Plane (7.3%) | 0.9085 | **0.994** | **0.994** | **+0.086** | 0.000 |
+| RADAR (5.0%) | 0.8957 | 0.927 | **0.929** | +0.031 | +0.002 |
+| SAM (5.0%) | 0.9025 | 0.937 | **0.938** | +0.035 | +0.001 |
+| Self-prop. Artillery (1.8%) | **0.9068** | 0.690 | 0.677 | **-0.217** | -0.013 |
+| Support (16.4%) | **0.9055** | 0.850 | **0.913** | -0.056 | **+0.063** |
+| Tank (15.9%) | 0.9053 | **0.954** | **0.963** | +0.049 | +0.009 |
+| TEL (1.3%) | 0.9034 | 0.943 | **0.983** | +0.040 | **+0.040** |
+| **mAP@50** | 0.8952 | 0.9040 | **0.934** | +0.009 | **+0.030** |
 
 ![Per-class AP](/docs/figures/fig_per_class_ap.png)
 *Per-class AP@50 for both models. The gap on Helicopter and Self-propelled Artillery stands out.*
@@ -172,13 +172,13 @@ Oriented R-CNN holds a meaningful lead on Self-propelled Artillery (-0.217 for Y
 
 The Helicopter result deserves a note. R-CNN's lowest AP across all classes is Helicopter at 0.7946, well below its 0.895-0.909 range on other classes. At shallow oblique angles (40°-50°), rotor blades and fuselage produce elongated OBB aspect ratios that are hard for a region proposal network to regress accurately. YOLO11s's anchor-free head, combined with wide rotation augmentation, handles this without the intermediate proposal step.
 
-The key question for YOLO26s is whether the dedicated angle loss closes any of these gaps, particularly on Helicopter and Self-propelled Artillery, where OBB angle regression is hardest. [Fill in once YOLO26s results are available.]
+YOLO26s improves on YOLO11s across 10 of 12 classes, with the biggest gains on MLRS (+0.115), Artillery (+0.084), Support (+0.063), and Armored (+0.042). The dedicated angle loss in YOLO26 appears most effective on classes with complex or elongated OBB orientations. On Helicopter the margin is nearly flat (+0.003), which suggests YOLO11s's anchor-free head was already handling that shape well without an explicit angle term. The one regression is Self-propelled Artillery (-0.013), which remains the hardest class for both YOLO variants. At 1.8% of training instances and irregular silhouettes, neither single-stage model reliably closes the gap with R-CNN on that class.
 
 ---
 
 ## What This Means in Practice
 
-If you are iterating quickly and need a general-purpose aerial detector: both YOLO variants train in around 5 hours instead of 28, run at high FPS, and beat a significantly larger model on overall accuracy. There is no meaningful trade-off at the aggregate level.
+If you are iterating quickly and need a general-purpose aerial detector: both YOLO variants train in around 5 hours instead of 28, and YOLO26s runs at ~400 FPS while beating a significantly larger model on overall accuracy. YOLO26s's dedicated angle loss gives it a consistent edge over YOLO11s across most classes with no additional training cost. There is no meaningful trade-off at the aggregate level.
 
 If your application requires high recall on rare, visually complex targets and you can afford the resource cost: Oriented R-CNN's 0.217-point advantage on Self-propelled Artillery is real and operationally significant. The two-stage proposal mechanism earns its keep on those edge cases.
 

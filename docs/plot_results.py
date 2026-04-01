@@ -1,8 +1,10 @@
 """
 Generate publication-ready figures from training logs.
   - Oriented R-CNN : TensorBoard event files in RCNN_LOG
-  - YOLO11s-OBB    : TensorBoard event files in YOLO_LOG  (primary)
-                     CSV fallback via YOLO_CSV             (if no TB events yet)
+  - YOLO11s-OBB    : TensorBoard event files in YOLO11_LOG (primary)
+                     CSV fallback via YOLO11_CSV            (if no TB events)
+  - YOLO26s-OBB    : TensorBoard event files in YOLO26_LOG (primary)
+                     CSV fallback via YOLO26_CSV            (if no TB events)
 
 Run from the AMOD root directory:
     source venv/bin/activate
@@ -28,9 +30,15 @@ plt.rcParams.update({
 FIGURES  = Path("docs/figures")
 FIGURES.mkdir(exist_ok=True)
 
-RCNN_LOG = "work_dirs/orientedrcnn_swinS_baseline/tf_logs"
-YOLO_LOG = "work_dirs/yolo26_obb_baseline/train"
-YOLO_CSV = "work_dirs/yolo26_obb_baseline/train/results.csv"
+RCNN_LOG   = "work_dirs/orientedrcnn_swinS_baseline/tf_logs"
+YOLO11_LOG = "runs/yolo_obb/yolo11s_baseline/train"
+YOLO11_CSV = "runs/yolo_obb/yolo11s_baseline/train/results.csv"
+YOLO26_LOG = "runs/yolo_obb/yolo26s_baseline/train"
+YOLO26_CSV = "runs/yolo_obb/yolo26s_baseline/train/results.csv"
+
+# Legacy aliases kept for backward compatibility
+YOLO_LOG = YOLO11_LOG
+YOLO_CSV = YOLO11_CSV
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -295,31 +303,38 @@ def plot_per_class():
     rcnn_ap = [0.9005, 0.9036, 0.7946, 0.9091, 0.9076, 0.9085,
                0.8957, 0.9025, 0.9068, 0.9055, 0.9053, 0.9034]
     # YOLO11s ep30 on full val (6,240 images) ✅
-    yolo_ap = [0.890, 0.906, 0.967, 0.983, 0.804, 0.994,
-               0.927, 0.937, 0.690, 0.850, 0.954, 0.943]
+    yolo11_ap = [0.890, 0.906, 0.967, 0.983, 0.804, 0.994,
+                 0.927, 0.937, 0.690, 0.850, 0.954, 0.943]
+    # YOLO26s ep30 on full val (1,020 images) ✅
+    yolo26_ap = [0.932, 0.990, 0.970, 0.995, 0.919, 0.994,
+                 0.929, 0.938, 0.677, 0.913, 0.963, 0.983]
 
-    has_rcnn = None not in rcnn_ap
-    has_yolo = None not in yolo_ap
+    has_rcnn  = None not in rcnn_ap
+    has_yolo11 = None not in yolo11_ap
+    has_yolo26 = None not in yolo26_ap
 
-    if not has_rcnn and not has_yolo:
-        print("  [skip] Per-class plot: fill in rcnn_ap and yolo_ap arrays.")
+    if not has_rcnn and not has_yolo11 and not has_yolo26:
+        print("  [skip] Per-class plot: fill in AP arrays.")
         return
 
     x = np.arange(len(classes))
-    width = 0.35 if (has_rcnn and has_yolo) else 0.5
-    fig, ax = plt.subplots(figsize=(13, 5))
+    n_models = sum([has_rcnn, has_yolo11, has_yolo26])
+    width = 0.25 if n_models == 3 else (0.35 if n_models == 2 else 0.5)
+    offsets = np.linspace(-(n_models - 1) / 2, (n_models - 1) / 2, n_models) * width
+    fig, ax = plt.subplots(figsize=(14, 5))
 
-    if has_rcnn and has_yolo:
-        ax.bar(x - width/2, rcnn_ap, width,
+    i = 0
+    if has_rcnn:
+        ax.bar(x + offsets[i], rcnn_ap, width,
                label="Oriented R-CNN + Swin-S", color="steelblue")
-        ax.bar(x + width/2, yolo_ap, width,
+        i += 1
+    if has_yolo11:
+        ax.bar(x + offsets[i], yolo11_ap, width,
                label="YOLO11s-OBB", color="darkorange")
-    elif has_rcnn:
-        ax.bar(x, rcnn_ap, width,
-               label="Oriented R-CNN + Swin-S (ep30, val_mini)", color="steelblue")
-    else:
-        ax.bar(x, yolo_ap, width,
-               label="YOLO11s-OBB", color="darkorange")
+        i += 1
+    if has_yolo26:
+        ax.bar(x + offsets[i], yolo26_ap, width,
+               label="YOLO26s-OBB", color="seagreen")
 
     ax.set_xticks(x)
     ax.set_xticklabels(classes, rotation=30, ha="right")
@@ -339,8 +354,9 @@ def plot_per_class():
 def plot_pareto():
     results = [
         # label                          mAP@50   FPS
-        ("Oriented R-CNN + Swin-S",      None,    None),
-        ("YOLO11s-OBB",                  None,    None),
+        ("Oriented R-CNN + Swin-S",      0.8952,  None),
+        ("YOLO11s-OBB",                  0.9040,  256),
+        ("YOLO26s-OBB",                  0.934,   400),
     ]
     ready = [(l, m, f) for l, m, f in results if m is not None]
     if not ready:

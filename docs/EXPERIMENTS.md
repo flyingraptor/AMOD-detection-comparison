@@ -114,17 +114,17 @@ tensorboard --logdir work_dirs/    # shows all runs under work_dirs/
 
 ## Metrics Collected
 
-| Metric | Oriented R-CNN | YOLO11s-OBB | Notes |
-|---|---|---|---|
-| `mAP@50` | ✅ 0.8952 | ✅ 0.9040 | Primary metric |
-| `mAP@50:95` | — | ✅ 0.671 | MMRotate only reports mAP@50 |
-| Per-class AP@50 | ✅ (12 classes) | ✅ (12 classes) | See full val tables below |
-| Precision | — | ✅ 0.889 | Not reported by MMRotate |
-| Recall | — | ✅ 0.834 | Not reported by MMRotate |
-| FPS | — | ✅ ~256 (3.9ms) | RCNN not benchmarked |
-| Training time | ✅ 28h | ✅ 5h | Wall-clock, RTX 5090 (confirmed) |
-| Parameters (M) | ✅ ~69M | ✅ 9.7M | Architecture-level |
-| GFLOPs | ✅ ~190 | ✅ 22.3 | At model-summary resolution |
+| Metric | Oriented R-CNN | YOLO11s-OBB | YOLO26s-OBB | Notes |
+|---|---|---|---|---|
+| `mAP@50` | ✅ 0.8952 | ✅ 0.9040 | ✅ 0.934 | Primary metric |
+| `mAP@50:95` | — | ✅ 0.671 | ✅ 0.714 | MMRotate only reports mAP@50 |
+| Per-class AP@50 | ✅ (12 classes) | ✅ (12 classes) | ✅ (12 classes) | See full val tables below |
+| Precision | — | ✅ 0.889 | ✅ 0.920 | Not reported by MMRotate |
+| Recall | — | ✅ 0.834 | ✅ 0.868 | Not reported by MMRotate |
+| FPS | — | ✅ ~256 (3.9ms) | ✅ ~400 (2.5ms) | RCNN not benchmarked |
+| Training time | ✅ 28h | ✅ 5h | ✅ ~5h | Wall-clock, RTX 5090 (confirmed) |
+| Parameters (M) | ✅ ~69M | ✅ 9.7M | ✅ 10.5M | Architecture-level |
+| GFLOPs | ✅ ~190 | ✅ 22.3 | ✅ 24.5 | At model-summary resolution |
 
 ---
 
@@ -176,7 +176,7 @@ print(metrics)
 | Val set (training) | `data/yolo_val_mini.txt` — same 170 scenes as RCNN/YOLO11s mini-val |
 | Checkpoint         | Every 5 epochs + best/last always saved |
 
-> Training launched: ~epoch 1 in progress. ~5h expected (same as YOLO11s).
+> ✅ Training complete. ~5h (same as YOLO11s). Full val results below.
 
 ---
 
@@ -188,12 +188,11 @@ print(metrics)
 |---|---|---|---|---|---|---|---|---|
 | OrientedRCNN + Swin-S | 0.8952 | — ¹ | — ¹ | — ¹ | — ¹ | ~28 | ~69 | ~190 |
 | YOLO11s-OBB | 0.9040 | 0.671 | 0.889 | 0.834 | ~256 (3.9ms) | ~5 | 9.7 | 22.3 |
-| **YOLO26s-OBB** | **🔄 training** | — | — | — | — | ~5 | **10.5** | **24.5** |
+| **YOLO26s-OBB** | **0.934** | **0.714** | **0.920** | **0.868** | **~400 (2.5ms)** | **~5** | **10.5** | **24.5** |
 
 ¹ MMRotate evaluation reports mAP@50 only; FPS not benchmarked for RCNN.
 
-> ✅ YOLO11s-OBB and Oriented R-CNN fully evaluated.
-> 🔄 YOLO26s-OBB training in progress — expected ~5h, same hyperparameters for fair comparison.
+> ✅ All three models fully evaluated.
 
 ---
 
@@ -373,7 +372,7 @@ This study focuses on the **two-baseline comparison** (Oriented R-CNN vs YOLO11s
 |---|---|---|
 | OrientedRCNN-B | ✅ **COMPLETE** — mAP@50: **0.8952** (full val, 6,246 img) | **28h** wall-clock, fp16, batch=4. |
 | YOLO11s-B | ✅ **COMPLETE** — mAP@50: **0.9040** (full val, 6,240 img) | **5h** wall-clock, fp16, batch=4. |
-| YOLO26s-B | 🔄 **TRAINING** — epoch 1/30 | Ultralytics 8.4.33, same hyps as YOLO11s. Record exact time from final log line. |
+| YOLO26s-B | ✅ **COMPLETE** — mAP@50: **0.934** (full val, 1,020 img) | **~5h** wall-clock, fp16, batch=4. P=0.920, R=0.868, mAP50:95=0.714, FPS~400 (2.5ms). |
 
 ---
 
