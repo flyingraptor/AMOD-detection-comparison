@@ -117,6 +117,8 @@ The latest model in the YOLO family at the time of this experiment. YOLO26 was r
 - **Dedicated angle loss:** an explicit `angle_loss` term in the training objective, designed to resolve the 0°/180° boundary discontinuity that affects YOLO11 and earlier OBB models.
 - **Refined OBB decoding:** optimized decoding in the OBB head paired with the angle loss.
 
+![YOLO26s-OBB pipeline](/docs/figures/fig_yolo26_pipeline.png)
+
 Model stats: 10.5M parameters, 55.1 GFLOPs at 1024px (post-fuse, from Ultralytics docs); the pre-fuse model summary reports 24.5 GFLOPs. Marginally larger than YOLO11s but in the same weight class. Epochs, batch size, optimizer, learning rate, and augmentation were all kept identical to YOLO11s for a direct comparison. We used standard SGD rather than YOLO26's native MuSGD optimizer to keep the training conditions matched.
 
 ![YOLO model comparison](/docs/figures/fig_yolo_comparison.png)
